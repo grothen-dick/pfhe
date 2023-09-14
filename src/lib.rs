@@ -1,5 +1,7 @@
 use std::fmt; // used for displaying stuff
 
+/// compute `y` such that y*num2 = 1 (mod num1)
+/// (assuming that there exists such a `y`)
 pub fn modular_inverse(num1: u32, num2: u32) -> i64 {
     let (mut x0, mut x1) = if num1 > num2 {
         (num1, num2)
@@ -40,6 +42,8 @@ impl fmt::Display for HenselCode {
     }
 }
 
+/// given a prime `p` and a rational `r = num/denom`, where p does not divide denom,
+/// returns `r (mod p)`
 pub fn rational_to_hensel_code(p: u32, r: &Rational) -> HenselCode {
     let q = p as i64;
     let n = ((r.num % q) * modular_inverse(r.denom, p)) % q;
@@ -51,7 +55,7 @@ pub fn rational_to_hensel_code(p: u32, r: &Rational) -> HenselCode {
 pub fn hensel_code_to_rational(hc: &HenselCode) -> Rational {
     let (p, p_i64, p_f64) = (hc.p, (hc.p as i64), (hc.p as f64));
     let n_max = ((p_f64 - 1.0) / 2.0).sqrt() as u32;
-    // perform (modified) extended euclidean algorithm on (p, n % p)
+    // perform (modified) extended euclidean algorithm on (p, hc.n % p)
     let (mut x0, mut x1): (u32, u32) = (p, u32::try_from(hc.n % p_i64).unwrap());
     let (mut y0, mut y1): (i64, i64) = (0, 1);
     while x0 > n_max {
