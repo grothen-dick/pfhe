@@ -51,7 +51,9 @@ pub fn rational_to_hensel_code(p: u32, r: &Rational) -> HenselCode {
 }
 
 /// given an element `hc` of Z/pZ, compute n_max = floor(sqrt((p-1)/2)) and return a rational
-/// num/denom where abs(num), abs(denom) <= n_max
+/// num/denom where:
+///  i)  abs(num), abs(denom) <= n_max,
+///  ii) hc = num/denom (mod p)
 pub fn hensel_code_to_rational(hc: &HenselCode) -> Rational {
     let (p, p_i64, p_f64) = (hc.p, (hc.p as i64), (hc.p as f64));
     let n_max = ((p_f64 - 1.0) / 2.0).sqrt() as u32;
