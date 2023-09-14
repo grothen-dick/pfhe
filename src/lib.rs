@@ -1,5 +1,30 @@
 use std::fmt; // used for displaying stuff
 
+pub struct Rational {
+    num: i64,
+    denom: u32,
+}
+
+pub struct HenselCode {
+    p: u32, // p is assumed to be a prime at this point
+    n: i64, // n is in Z/pZ and represents a rational num/denom, where
+            // abs(num), abs(denom) <= sqrt((p-1)/2)
+}
+
+/// pretty print Rational
+impl fmt::Display for Rational {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}/{}", self.num, self.denom)
+    }
+}
+
+/// pretty print HenselCode
+impl fmt::Display for HenselCode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} (mod {})", self.n, self.p)
+    }
+}
+
 /// compute `y` such that y*num2 = 1 (mod num1)
 /// (assuming that there exists such a `y`)
 pub fn modular_inverse(num1: u32, num2: u32) -> i64 {
@@ -15,31 +40,6 @@ pub fn modular_inverse(num1: u32, num2: u32) -> i64 {
         (y0, y1) = (y1, y0 - i64::from(q) * y1);
     }
     y0
-}
-
-pub struct Rational {
-    num: i64,
-    denom: u32,
-}
-
-pub struct HenselCode {
-    p: u32, // p is assumed to be a prime at this point
-    n: i64, // n is in Z/pZ and represents a rational num/denom, where
-            // abs(num), abs(denom) <= sqrt((p-1)/2)
-}
-
-// pretty print rationals
-impl fmt::Display for Rational {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}/{}", self.num, self.denom)
-    }
-}
-
-// pretty print hensel codes
-impl fmt::Display for HenselCode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} (mod {})", self.n, self.p)
-    }
 }
 
 /// given a prime `p` and a rational `r = num/denom`, where p does not divide denom,
