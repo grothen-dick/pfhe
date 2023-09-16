@@ -1,14 +1,34 @@
+use rand::random; // random numbers
 use std::fmt; // used for displaying stuff
+use std::ops::{Add, Mul}; // add and multiply traits
 
 pub struct Rational {
-    num: i64,
-    denom: u32,
+    num: i128,
+    denom: i128,
 }
 
-pub struct HenselCode {
-    p: u32, // p is assumed to be a prime at this point
-    n: i64, // n is in Z/pZ and represents a rational num/denom, where
-            // abs(num) <= sqrt((p-1)/2), denom <= 2*sqrt((p-1)/2)
+impl Add for Rational {
+    type Output = Self;
+    fn add(self, other: Self) -> Self {
+        let (n1, n2) = (self.num, other.num);
+        let (d1, d2) = (self.denom, other.denom);
+        Self {
+            num: n1 * d2 + n2 * d1,
+            denom: d1 * d2,
+        }
+    }
+}
+
+impl Mul for Rational {
+    type Output = Self;
+    fn mul(self, other: Self) -> Self {
+        let (n1, n2) = (self.num, other.num);
+        let (d1, d2) = (self.denom, other.denom);
+        Self {
+            num: n1 * n2,
+            denom: d1 * d2,
+        }
+    }
 }
 
 /// pretty-print Rational
@@ -18,6 +38,12 @@ impl fmt::Display for Rational {
     }
 }
 
+pub struct HenselCode {
+    p: i128, // p is assumed to be a prime at this point
+    n: i128, // n is in Z/pZ and represents a rational num/denom, where
+             // abs(num) <= sqrt((p-1)/2), denom <= 2*sqrt((p-1)/2)
+}
+
 /// pretty-print HenselCode
 impl fmt::Display for HenselCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -25,28 +51,32 @@ impl fmt::Display for HenselCode {
     }
 }
 
-/// compute `y` such that y*num2 = 1 (mod num1)
+/// compute `y` such that y*m = 1 (mod n)
 /// (assuming that there exists such a `y`)
-pub fn modular_inverse(num1: u32, num2: u32) -> i64 {
-    let (mut x0, mut x1) = if num1 > num2 {
-        (num1, num2)
-    } else {
-        (num2, num1)
-    };
-    let (mut y0, mut y1): (i64, i64) = (0, 1);
+pub fn modular_inverses(n: i128, m: i128) -> (i128, i128) {
+    // TODO: return a pair (i_n: i128, i_m: i128) such that
+    // i_n * n + i_m * m = 1
+    if n < m {
+        let (i_m, i_n) = modular_inverses(m, n);
+        return (i_n, i_m);
+    }
+    let (mut x0, mut x1) = (n, m);
+    let (mut y0, mut y1): (i128, i128) = (1, 0);
+    let (mut z0, mut z1): (i128, i128) = (0, 1);
     while x1 > 0 {
         let q = x0 / x1;
         (x0, x1) = (x1, x0 - q * x1);
-        (y0, y1) = (y1, y0 - i64::from(q) * y1);
+        (y0, y1) = (y1, y0 - q * y1);
+        (z0, z1) = (z1, z0 - q * z1);
     }
-    y0
+    (y0, z0)
 }
 
 /// given a prime `p` and a rational `r = num/denom`, where p does not divide denom,
 /// returns `r (mod p)`
-pub fn rational_to_hensel_code(p: u32, r: &Rational) -> HenselCode {
-    let q = p as i64;
-    let n = ((r.num % q) * modular_inverse(r.denom, p)) % q;
+pub fn rational_to_hensel_code(p: i128, r: &Rational) -> HenselCode {
+    let (i_d, _) = modular_inverses(r.denom, p); // REVIEW
+    let n = ((r.num % p) * i_d) % p;
     HenselCode { p, n }
 }
 
@@ -56,21 +86,21 @@ pub fn rational_to_hensel_code(p: u32, r: &Rational) -> HenselCode {
 ///  ii)  0      <= denom <= 2*n_max,
 ///  iii) hc = num/denom (mod p)
 pub fn hensel_code_to_rational(hc: &HenselCode) -> Rational {
-    let (p, p_i64, p_f64) = (hc.p, (hc.p as i64), (hc.p as f64));
-    let sign_n: i64 = if hc.n < 0 { -1 } else { 1 };
+    let (p, p_i128, p_f64) = (hc.p, (hc.p as i128), (hc.p as f64));
+    let sign_n: i128 = if hc.n < 0 { -1 } else { 1 };
     let abs_n = sign_n * hc.n;
 
-    let n_max = ((p_f64 - 1.0) / 2.0).sqrt() as u32;
+    let n_max = ((p_f64 - 1.0) / 2.0).sqrt() as i128;
 
     // perform (modified) extended euclidean algorithm on (p, n % p)
-    let (mut x0, mut x1): (u32, u32) = (p, u32::try_from(abs_n % p_i64).unwrap());
-    let (mut y0, mut y1): (i64, i64) = (0, 1);
+    let (mut x0, mut x1): (i128, i128) = (p, i128::try_from(abs_n % p_i128).unwrap());
+    let (mut y0, mut y1): (i128, i128) = (0, 1);
     while x0 > n_max {
         let q = x0 / x1;
         (x0, x1) = (x1, x0 - q * x1);
-        (y0, y1) = (y1, y0 - i64::from(q) * y1);
+        (y0, y1) = (y1, y0 - i128::from(q) * y1);
     }
-    let (mut num, mut denom): (i64, i64) = (sign_n * (x0 as i64), y0);
+    let (mut num, mut denom): (i128, i128) = (sign_n * (x0 as i128), y0);
 
     // make sure `denom` is positive
     if denom < 0 {
@@ -79,7 +109,50 @@ pub fn hensel_code_to_rational(hc: &HenselCode) -> Rational {
     // return `num/denom`
     Rational {
         num,
-        denom: u32::try_from(denom).unwrap(),
+        denom: i128::try_from(denom).unwrap(),
+    }
+}
+
+pub struct CryptographicParameters {
+    p1: i128,
+    p2: i128,
+    p3: i128,
+    p4: i128,
+    p5: i128,
+}
+
+impl CryptographicParameters {
+    /// return the product of the 5 primes used as crypto parameters
+    pub fn public_key(&self) -> i128 {
+        self.p1 * self.p2 * self.p3 * self.p4 * self.p5
+    }
+
+    /// given `n_{1}, n_{2}, n_{3}`, compute N such that `N = n_{i} (mod p_{i})`
+    fn chinese_remainder(self, n1: i128, n2: i128, n3: i128) -> i128 {
+        let (p1, p2, p3) = (self.p1, self.p2, self.p3);
+        // we want to solve:
+        // ap1p2 + bp1p3 + cp2p3 = n1 (mod p1) = n2 (mod p2) = n3 (mod p3)
+        // so we have:
+        //     cp2p3 = n1 (mod p1)
+        //     bp1p3 = n2 (mod p2)
+        //     ap1p2 = n3 (mod p3)
+        let (q12, q13, q23) = (p1 * p2, p1 * p3, p2 * p3);
+        let (i12, _) = modular_inverses(q12, p3);
+        let (i13, _) = modular_inverses(q13, p2);
+        let (i23, _) = modular_inverses(q23, p1);
+        (n3 * i12 * q12 + n2 * i13 * q13 + n1 * i23 * q23) % (p1 * p2 * p3)
+    }
+    pub fn encode(&self, m: i128) -> i128 {
+        // TODO: use correct bounds for the variables
+        let p4 = self.p4;
+        let g = self.public_key();
+        let delta_max = g / p4;
+        let s1 = random::<i128>();
+        let s2 = random::<i128>() % i128::from(self.p2);
+        let s3 = random::<i128>() % i128::from(self.p3);
+        let delta = random::<i128>() % delta_max;
+        // (s1 * () + delta * p4) % g
+        return 0;
     }
 }
 
@@ -88,100 +161,80 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_finds_modular_inverse() {
-        let inv_x = modular_inverse(37, 5);
-        assert_eq!(inv_x, 15);
+    fn finds_modular_inverses() {
+        let inv = modular_inverses(37, 5);
+        assert_eq!(inv, (-2, 15)); // -2*37 + 15*5 = 1
     }
 
     #[test]
-    fn it_finds_modular_inverse_wrong_order() {
-        let inv_x = modular_inverse(374533, 52343);
-        assert_eq!(inv_x, 142177);
+    fn finds_modular_inverses_big() {
+        let inv = modular_inverses(374533, 52343);
+        assert_eq!(inv, (-19870, 142177));
     }
 
     #[test]
     fn translates_rational_to_hensel_code() {
-        let p: u32 = 37;
-        let q = p as i64;
+        fn simple_tester(r: Rational, p: i128) -> () {
+            let num = r.num;
+            let denom = r.denom;
+            let hc = rational_to_hensel_code(p, &r);
+            let (id, _) = modular_inverses(denom, p);
+            assert_eq!(hc.p, p);
+            assert_eq!(hc.n, (num * id) % p);
+            println!("rational: {} => hensel code: {}", r, hc);
+        }
+
+        let p: i128 = 37;
 
         // positive integer
         let r1 = Rational { num: 6, denom: 1 };
-        let hc1 = rational_to_hensel_code(p, &r1);
-        assert_eq!(hc1.p, p);
-        assert_eq!(hc1.n, r1.num % q);
-        println!("rational: {} => hensel code: {}", r1, hc1);
+        simple_tester(r1, p);
 
         // integer inverse
         let r2 = Rational { num: 1, denom: 8 };
-        let hc2 = rational_to_hensel_code(p, &r2);
-        assert_eq!(hc2.p, p);
-        assert_eq!(hc2.n, modular_inverse(p, r2.denom));
-        println!("rational: {} => hensel code: {}", r2, hc2);
+        simple_tester(r2, p);
 
         // general rational
         let r3 = Rational { num: 6, denom: 8 };
-        let hc3 = rational_to_hensel_code(p, &r3);
-        assert_eq!(hc3.p, p);
-        assert_eq!(hc3.n, (r3.num * modular_inverse(p, r3.denom)) % q);
-        println!("rational: {} => hensel code: {}", r3, hc3);
+        simple_tester(r3, p);
     }
 
     #[test]
     fn translates_rational_to_hc_and_back() {
-        let p: u32 = 7919; // thanks wikipedia for this prime
-        let q = p as i64;
+        fn simple_tester(r: Rational, p: i128) -> () {
+            let num = r.num;
+            let denom = r.denom;
+            let hc = rational_to_hensel_code(p, &r);
+            let new_r = hensel_code_to_rational(&hc);
+            let (id, _) = modular_inverses(denom, p);
+            assert_eq!(hc.p, p);
+            assert_eq!(hc.n, (num * id) % p);
+            println!(
+                "rational: {} => hensel code: {} => rational: {}",
+                r, hc, new_r
+            );
+        }
+
+        let p: i128 = 7919; // thanks wikipedia for this prime
 
         // positive integer
         let r1 = Rational { num: 6, denom: 1 };
-        let hc1 = rational_to_hensel_code(p, &r1);
-        let new_r1 = hensel_code_to_rational(&hc1);
-        assert_eq!(hc1.p, p);
-        assert_eq!(hc1.n, r1.num % q);
-        println!(
-            "rational: {} => hensel code: {} => rational: {}",
-            r1, hc1, new_r1
-        );
+        simple_tester(r1, p);
 
         // integer inverse
         let r2 = Rational { num: 1, denom: 8 };
-        let hc2 = rational_to_hensel_code(p, &r2);
-        let new_r2 = hensel_code_to_rational(&hc2);
-        assert_eq!(hc2.p, p);
-        assert_eq!(hc2.n, modular_inverse(p, r2.denom));
-        println!(
-            "rational: {} => hensel code: {} => rational: {}",
-            r2, hc2, new_r2
-        );
+        simple_tester(r2, p);
 
         // general rational
         let r3 = Rational { num: 6, denom: 8 };
-        let hc3 = rational_to_hensel_code(p, &r3);
-        let new_r3 = hensel_code_to_rational(&hc3);
-        assert_eq!(hc3.p, p);
-        assert_eq!(hc3.n, (r3.num * modular_inverse(p, r3.denom)) % q);
-        println!(
-            "rational: {} => hensel code: {} => rational: {}",
-            r3, hc3, new_r3
-        );
+        simple_tester(r3, p);
 
         // negative integer
         let r4 = Rational { num: -6, denom: 1 };
-        let hc4 = rational_to_hensel_code(p, &r4);
-        let new_r4 = hensel_code_to_rational(&hc4);
-        println!(
-            "rational: {} => hensel code: {} => rational: {}",
-            r4, hc4, new_r4
-        );
+        simple_tester(r4, p);
 
         // general negative rational
         let r5 = Rational { num: -7, denom: 8 };
-        let hc5 = rational_to_hensel_code(p, &r5);
-        let new_r5 = hensel_code_to_rational(&hc5);
-        assert_eq!(hc5.p, p);
-        assert_eq!(hc5.n, (r5.num * modular_inverse(p, r5.denom)) % q);
-        println!(
-            "rational: {} => hensel code: {} => rational: {}",
-            r5, hc5, new_r5
-        );
+        simple_tester(r5, p);
     }
 }
