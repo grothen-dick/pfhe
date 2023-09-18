@@ -1,8 +1,10 @@
-use rand::random; // random numbers
+#[macro_use]
+extern crate impl_ops;
+
 use std::fmt; // used for displaying stuff
 use std::{
-    convert::From,   // convert hensel code <-> rational
-    ops::{Add, Mul}, // add and multiply traits
+    convert::From, // convert hensel code <-> rational
+    ops,           // add and multiply traits
 };
 
 pub struct Rational {
@@ -10,57 +12,21 @@ pub struct Rational {
     denom: i128,
 }
 
-/// add two `&Rational`s
-impl<'a, 'b> Add<&'b Rational> for &'a Rational {
-    type Output = Rational;
-    fn add(self, other: &'b Rational) -> Rational {
-        let (n1, n2) = (self.num, other.num);
-        let (d1, d2) = (self.denom, other.denom);
-        Rational {
-            num: n1 * d2 + n2 * d1,
-            denom: d1 * d2,
-        }
+/// add two Rationals
+impl_op_ex!(+ |r1: &Rational, r2: &Rational| -> Rational {
+Rational {
+    num: r1.num * r2.denom + r2.num * r1.denom,
+    denom: r1.denom * r2.denom,
     }
-}
+});
 
-/// add two `Rational`s
-impl Add for Rational {
-    type Output = Self;
-    fn add(self, other: Self) -> Self {
-        let (n1, n2) = (self.num, other.num);
-        let (d1, d2) = (self.denom, other.denom);
-        Self {
-            num: n1 * d2 + n2 * d1,
-            denom: d1 * d2,
-        }
+/// multiply two Rationals
+impl_op_ex!(*|r1: &Rational, r2: &Rational| -> Rational {
+    Rational {
+        num: r1.num * r2.num,
+        denom: r1.denom * r2.denom,
     }
-}
-
-/// multiply two `&Rational`s
-impl<'a, 'b> Mul<&'b Rational> for &'a Rational {
-    type Output = Rational;
-    fn mul(self, other: &'b Rational) -> Rational {
-        let (n1, n2) = (self.num, other.num);
-        let (d1, d2) = (self.denom, other.denom);
-        Rational {
-            num: n1 * n2,
-            denom: d1 * d2,
-        }
-    }
-}
-
-/// multiply two `Rational`s
-impl Mul for Rational {
-    type Output = Self;
-    fn mul(self, other: Self) -> Self {
-        let (n1, n2) = (self.num, other.num);
-        let (d1, d2) = (self.denom, other.denom);
-        Self {
-            num: n1 * n2,
-            denom: d1 * d2,
-        }
-    }
-}
+});
 
 /// pretty-print Rational
 impl fmt::Display for Rational {
@@ -110,63 +76,24 @@ pub struct HenselCode {
              // abs(num) <= sqrt((p-1)/2), denom <= 2*sqrt((p-1)/2)
 }
 
-/// add two `&Henselcode`s
-impl<'a, 'b> Add<&'b HenselCode> for &'a HenselCode {
-    type Output = HenselCode;
-    fn add(self, other: &'b HenselCode) -> HenselCode {
-        let (n1, n2) = (self.n, other.n);
-        let (p1, p2) = (self.p, other.p);
-
-        if p1 != p2 {
-            panic!("cannot add '{}' and '{}'", self, other);
-        }
-
-        HenselCode { p: p1, n: n1 + n2 }
+/// add two HenselCodes
+impl_op_ex!(+ |hc1: &HenselCode, hc2: &HenselCode| -> HenselCode {
+    if hc1.p != hc2.p {
+            panic!("cannot add '{}' and '{}'", hc1, hc2);
     }
-}
+    HenselCode {p: hc1.p, n: hc1.n + hc2.n}
+});
 
-/// add two `Henselcode`s
-impl Add for HenselCode {
-    type Output = Self;
-    fn add(self, other: Self) -> Self {
-        let (n1, n2) = (self.n, other.n);
-        let (p1, p2) = (self.p, other.p);
-
-        if p1 != p2 {
-            panic!("cannot add '{}' and '{}'", self, other);
-        }
-
-        Self { p: p1, n: n1 + n2 }
+/// multiply two HenselCodes
+impl_op_ex!(*|hc1: &HenselCode, hc2: &HenselCode| -> HenselCode {
+    if hc1.p != hc2.p {
+        panic!("cannot multiply '{}' and '{}'", hc1, hc2);
     }
-}
-
-/// multiply two `&Henselcode`s
-impl<'a, 'b> Mul<&'b HenselCode> for &'a HenselCode {
-    type Output = HenselCode;
-    fn mul(self, other: &'b HenselCode) -> HenselCode {
-        let (n1, n2) = (self.n, other.n);
-        let (p1, p2) = (self.p, other.p);
-
-        if p1 != p2 {
-            panic!("cannot multiply '{}' and '{}'", self, other);
-        }
-        HenselCode { p: p1, n: n1 * n2 }
+    HenselCode {
+        p: hc1.p,
+        n: hc1.n * hc2.n,
     }
-}
-
-/// multiply two `Henselcode`s
-impl Mul for HenselCode {
-    type Output = Self;
-    fn mul(self, other: Self) -> Self {
-        let (n1, n2) = (self.n, other.n);
-        let (p1, p2) = (self.p, other.p);
-
-        if p1 != p2 {
-            panic!("cannot multiply '{}' and '{}'", self, other);
-        }
-        Self { p: p1, n: n1 * n2 }
-    }
-}
+});
 
 /// pretty-print HenselCode
 impl fmt::Display for HenselCode {
@@ -240,13 +167,15 @@ impl CryptographicParameters {
         // TODO: use correct bounds for the variables
         let g = self.public_key();
         let delta_max = g / self.p4;
-        let s2 = random::<i128>() % self.p2;
-        let s3 = random::<i128>() % self.p3;
-        let delta = random::<i128>() % delta_max;
+        // let s2 = random::<i128>() % self.p2;
+        // let s3 = random::<i128>() % self.p3;
+        // let delta = random::<i128>() % delta_max;
+        let (s2, s3, delta) = (0, 0, 0); // FIXME
 
         let rm = Rational { num: m, denom: 1 };
         let s1 = Rational {
-            num: random::<i128>(),
+            // num: random::<i128>(),
+            num: 0, // FIXME
             denom: 1,
         };
         let dp4 = HenselCode {
