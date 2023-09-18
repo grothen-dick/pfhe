@@ -232,7 +232,8 @@ impl CryptographicParameters {
         let (i12, _) = modular_inverses(q12, p3);
         let (i13, _) = modular_inverses(q13, p2);
         let (i23, _) = modular_inverses(q23, p1);
-        let n = (n3 * i12 * q12 + n2 * i13 * q13 + n1 * i23 * q23) % (p1 * p2 * p3);
+        let (a, b, c) = (n3 * i12, n2 * i13, n1 * i23);
+        let n = (a * q12 + b * q13 + c * q23) % (p1 * p2 * p3);
         HenselCode { p: p1 * p2 * p3, n }
     }
     pub fn encode(&self, m: i128) -> HenselCode {
@@ -372,5 +373,18 @@ mod tests {
             denom: 982,
         };
         simple_tester(r12, r22);
+    }
+
+    #[test]
+    fn chinese_remainder() {
+        let (p1, p2, p3, p4, p5) = (4919, 7, 11, 13, 17);
+        let crypto_param = CryptographicParameters { p1, p2, p3, p4, p5 };
+        let result = crypto_param.chinese_remainder(38, 2, 1);
+        // for 0 reason the usual 'modulo' operator `%` has a range of [-p, p]
+        // for `(...) % p` instead of the normal range [0, p]. The sensible version
+        // is instead written as `(...).rem_euclid(p)`.
+        assert_eq!(result.n.rem_euclid(4919), 38);
+        assert_eq!(result.n.rem_euclid(7), 2);
+        assert_eq!(result.n.rem_euclid(11), 1);
     }
 }
