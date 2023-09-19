@@ -12,7 +12,6 @@ pub struct Rational {
     denom: i128,
 }
 
-/// add two Rationals
 impl_op_ex!(+ |r1: &Rational, r2: &Rational| -> Rational {
 Rational {
     num: r1.num * r2.denom + r2.num * r1.denom,
@@ -20,7 +19,6 @@ Rational {
     }
 });
 
-/// multiply two Rationals
 impl_op_ex!(*|r1: &Rational, r2: &Rational| -> Rational {
     Rational {
         num: r1.num * r2.num,
@@ -37,8 +35,8 @@ impl fmt::Display for Rational {
 
 /// given an element `hc` of Z/pZ, compute n_max = floor(sqrt((p-1)/2)) and return a rational
 /// num/denom where:
-///  i)   -n_max <= num   <= n_max,
-///  ii)  0      <= denom <= 2*n_max,
+///  i)   0 <= num   <= n_max,
+///  ii)  0 <= denom <= 2*n_max,
 ///  iii) hc = num/denom (mod p)
 impl From<HenselCode> for Rational {
     fn from(hc: HenselCode) -> Self {
@@ -49,7 +47,7 @@ impl From<HenselCode> for Rational {
         let n_max = ((p_f64 - 1.0) / 2.0).sqrt() as i128;
 
         // perform (modified) extended euclidean algorithm on (p, n % p)
-        let (mut x0, mut x1): (i128, i128) = (p, i128::try_from(abs_n % p_i128).unwrap());
+        let (mut x0, mut x1): (i128, i128) = (p, abs_n.rem_euclid(p_i128));
         let (mut y0, mut y1): (i128, i128) = (0, 1);
         while x0 > n_max {
             let q = x0 / x1;
@@ -76,7 +74,18 @@ pub struct HenselCode {
              // abs(num) <= sqrt((p-1)/2), denom <= 2*sqrt((p-1)/2)
 }
 
-/// add two HenselCodes
+impl HenselCode {
+    pub fn chinese_remainder(hc1: Self, hc2: Self) -> Self {
+        let (p1, n1) = (hc1.p, hc1.n);
+        let (p2, n2) = (hc2.p, hc2.n);
+        let (i1, i2) = modular_inverses(p1, p2);
+        HenselCode {
+            p: p1 * p2,
+            n: (p1 * i1 * n2 + p2 * i2 * n1).rem_euclid(p1 * p2),
+        }
+    }
+}
+
 impl_op_ex!(+ |hc1: &HenselCode, hc2: &HenselCode| -> HenselCode {
     if hc1.p != hc2.p {
             panic!("cannot add '{}' and '{}'", hc1, hc2);
@@ -84,7 +93,6 @@ impl_op_ex!(+ |hc1: &HenselCode, hc2: &HenselCode| -> HenselCode {
     HenselCode {p: hc1.p, n: hc1.n + hc2.n}
 });
 
-/// multiply two HenselCodes
 impl_op_ex!(*|hc1: &HenselCode, hc2: &HenselCode| -> HenselCode {
     if hc1.p != hc2.p {
         panic!("cannot multiply '{}' and '{}'", hc1, hc2);
@@ -108,7 +116,7 @@ impl From<(i128, Rational)> for HenselCode {
     fn from(params: (i128, Rational)) -> Self {
         let (p, r) = params;
         let (id, _) = modular_inverses(r.denom, p);
-        let n = ((r.num % p) * id) % p;
+        let n = ((r.num.rem_euclid(p)) * id).rem_euclid(p);
         HenselCode { p, n }
     }
 }
@@ -146,41 +154,34 @@ impl CryptographicParameters {
         self.p1 * self.p2 * self.p3 * self.p4 * self.p5
     }
 
-    /// given `n_{1}, n_{2}, n_{3}`, compute N such that `N = n_{i} (mod p_{i})`
     fn chinese_remainder(&self, n1: i128, n2: i128, n3: i128) -> HenselCode {
-        let (p1, p2, p3) = (self.p1, self.p2, self.p3);
-        // we want to solve:
-        // ap1p2 + bp1p3 + cp2p3 = n1 (mod p1) = n2 (mod p2) = n3 (mod p3)
-        // so we have:
-        //     cp2p3 = n1 (mod p1)
-        //     bp1p3 = n2 (mod p2)
-        //     ap1p2 = n3 (mod p3)
-        let (q12, q13, q23) = (p1 * p2, p1 * p3, p2 * p3);
-        let (i12, _) = modular_inverses(q12, p3);
-        let (i13, _) = modular_inverses(q13, p2);
-        let (i23, _) = modular_inverses(q23, p1);
-        let (a, b, c) = (n3 * i12, n2 * i13, n1 * i23);
-        let n = (a * q12 + b * q13 + c * q23) % (p1 * p2 * p3);
-        HenselCode { p: p1 * p2 * p3, n }
+        let hc1 = HenselCode { p: self.p1, n: n1 };
+        let hc2 = HenselCode { p: self.p2, n: n2 };
+        let hc3 = HenselCode { p: self.p3, n: n3 };
+        HenselCode::chinese_remainder(HenselCode::chinese_remainder(hc1, hc2), hc3)
     }
+
     pub fn encode(&self, m: i128) -> HenselCode {
         // TODO: use correct bounds for the variables
         let g = self.public_key();
-        let delta_max = g / self.p4;
+        // let delta_max = g / self.p4;
         // let s2 = random::<i128>() % self.p2;
         // let s3 = random::<i128>() % self.p3;
         // let delta = random::<i128>() % delta_max;
-        let (s2, s3, delta) = (0, 0, 0); // FIXME
+        let s2 = 0; // FIXME
+        let s3 = 0; // FIXME
+        let delta = 0; // FIXME
+
+        let dp4 = HenselCode {
+            p: g,
+            n: delta * self.p4,
+        };
 
         let rm = Rational { num: m, denom: 1 };
         let s1 = Rational {
             // num: random::<i128>(),
             num: 0, // FIXME
             denom: 1,
-        };
-        let dp4 = HenselCode {
-            p: g,
-            n: delta * self.p4,
         };
         // intermediary step with a Farey fraction
         let rational_term = s1 * Rational::from(self.chinese_remainder(0, s2, s3)) + rm;
@@ -214,7 +215,7 @@ mod tests {
             let hc = HenselCode::from((p, rclone));
             let (id, _) = modular_inverses(denom, p);
             assert_eq!(hc.p, p);
-            assert_eq!(hc.n, (num * id) % p);
+            assert_eq!(hc.n, (num * id).rem_euclid(p));
             println!("rational: {} => hensel code: {}", r, hc);
         }
 
@@ -244,7 +245,7 @@ mod tests {
             let new_r = Rational::from(hcclone);
             let (id, _) = modular_inverses(denom, p);
             assert_eq!(hc.p, p);
-            assert_eq!(hc.n, (num * id) % p);
+            assert_eq!(hc.n, (num * id).rem_euclid(p));
             println!(
                 "rational: {} => hensel code: {} => rational: {}",
                 r, hc, new_r
@@ -308,12 +309,20 @@ mod tests {
     fn chinese_remainder() {
         let (p1, p2, p3, p4, p5) = (4919, 7, 11, 13, 17);
         let crypto_param = CryptographicParameters { p1, p2, p3, p4, p5 };
-        let result = crypto_param.chinese_remainder(38, 2, 1);
+        let (n1, n2, n3) = (38, 2, 1);
+        let result = crypto_param.chinese_remainder(n1, n2, n3);
         // for 0 reason the usual 'modulo' operator `%` has a range of [-p, p]
         // for `(...) % p` instead of the normal range [0, p]. The sensible version
-        // is instead written as `(...).rem_euclid(p)`.
-        assert_eq!(result.n.rem_euclid(4919), 38);
-        assert_eq!(result.n.rem_euclid(7), 2);
-        assert_eq!(result.n.rem_euclid(11), 1);
+        // is instead written `(...).rem_euclid(p)`.
+        assert_eq!(result.n.rem_euclid(4919), n1);
+        assert_eq!(result.n.rem_euclid(7), n2);
+        assert_eq!(result.n.rem_euclid(11), n3);
+        let hc1 = HenselCode { p: p1, n: n1 };
+        let hc2 = HenselCode { p: p2, n: n2 };
+        let hc3 = HenselCode { p: p3, n: n3 };
+        let hc12 = HenselCode::chinese_remainder(hc1, hc2);
+        let hc = HenselCode::chinese_remainder(hc12, hc3);
+        assert_eq!(result.n.rem_euclid(p1 * p2 * p3), hc.n);
+        println!("{} : {}", hc, result);
     }
 }
