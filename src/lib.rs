@@ -1,123 +1,391 @@
+// this is for allowing using constants expressions as type parameters
+// used mostly for `chinese_remainder`
+#![feature(generic_const_exprs)]
+// this is for having a default size for BigInt
+#![feature(const_generics_defaults)]
+
 #[macro_use]
 extern crate impl_ops;
 
-use std::fmt; // used for displaying stuff
+mod crypto_parameters;
+
 use std::{
     convert::From, // convert hensel code <-> rational
-    ops,           // add and multiply traits
+    fmt,           // used for displaying stuff
+    ops,
 };
 
-pub struct Rational {
-    num: i128,
-    denom: i128,
-}
+use crypto_bigint::U256;
+/// default size of a BigInt (in LIMBS)
+const DEFAULT_LIMBS: usize = U256::LIMBS;
 
-impl_op_ex!(+ |r1: &Rational, r2: &Rational| -> Rational {
-Rational {
-    num: r1.num * r2.denom + r2.num * r1.denom,
-    denom: r1.denom * r2.denom,
-    }
-});
+mod big_int {
+    use super::{
+        fmt,
+        ops::{Add, Div, Mul, Rem, Sub},
+        From, DEFAULT_LIMBS,
+    };
+    use crypto_bigint::{rand_core::OsRng, NonZero, RandomMod, Uint, Wrapping};
 
-impl_op_ex!(*|r1: &Rational, r2: &Rational| -> Rational {
-    Rational {
-        num: r1.num * r2.num,
-        denom: r1.denom * r2.denom,
-    }
-});
+    /// Simple wrapper to abstract details away from crypto_bigint library.
+    /// We simply want to be able to:
+    /// - do arithmetics with BigInt
+    /// - display it with println! for debug purposes
+    /// - create a BigInt from a regular integer
+    /// - generate a random BigInt
+    /// - change the size of BigInt
+    #[derive(PartialEq, PartialOrd)]
+    pub struct BigInt<const L: usize = DEFAULT_LIMBS>(pub Wrapping<Uint<L>>);
 
-/// pretty-print Rational
-impl fmt::Display for Rational {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}/{}", self.num, self.denom)
-    }
-}
-
-/// given an element `hc` of Z/pZ, compute n_max = floor(sqrt((p-1)/2)) and return a rational
-/// num/denom where:
-///  i)   0 <= num   <= n_max,
-///  ii)  0 <= denom <= 2*n_max,
-///  iii) hc = num/denom (mod p)
-impl From<HenselCode> for Rational {
-    fn from(hc: HenselCode) -> Self {
-        let (p, p_i128, p_f64) = (hc.p, (hc.p as i128), (hc.p as f64));
-        let sign_n: i128 = if hc.n < 0 { -1 } else { 1 };
-        let abs_n = sign_n * hc.n;
-
-        let n_max = ((p_f64 - 1.0) / 2.0).sqrt() as i128;
-
-        // perform (modified) extended euclidean algorithm on (p, n % p)
-        let (mut x0, mut x1): (i128, i128) = (p, abs_n.rem_euclid(p_i128));
-        let (mut y0, mut y1): (i128, i128) = (0, 1);
-        while x0 > n_max {
-            let q = x0 / x1;
-            (x0, x1) = (x1, x0 - q * x1);
-            (y0, y1) = (y1, y0 - i128::from(q) * y1);
+    impl<const L: usize> BigInt<L> {
+        /// create a random BigInt modulo `modulus`
+        pub fn random_mod(modulus: BigInt<L>) -> BigInt<L> {
+            BigInt(Wrapping(Uint::<L>::random_mod(
+                &mut OsRng,
+                &NonZero::new(modulus.0 .0).unwrap(),
+            )))
         }
-        let (mut num, mut denom): (i128, i128) = (sign_n * (x0 as i128), y0);
 
-        // make sure `denom` is positive
-        if denom < 0 {
-            (num, denom) = (-num, -denom);
+        /// wrap a Uint into a BigInt
+        pub fn new(n: Uint<L>) -> BigInt<L> {
+            BigInt(Wrapping(n))
         }
-        // return `num/denom`
-        Rational {
-            num,
-            denom: i128::try_from(denom).unwrap(),
+
+        pub fn resize<const Lnew: usize>(&self) -> BigInt<Lnew> {
+            BigInt::new(self.0 .0.resize::<Lnew>())
         }
-    }
-}
 
-pub struct HenselCode {
-    p: i128, // p is assumed to be a prime at this point
-    n: i128, // n is in Z/pZ and represents a rational num/denom, where
-             // abs(num) <= sqrt((p-1)/2), denom <= 2*sqrt((p-1)/2)
-}
+        /// compute square root of BigInt
+        pub fn sqrt(self) -> BigInt<L> {
+            BigInt(Wrapping(self.0 .0.sqrt_vartime()))
+        }
 
-impl HenselCode {
-    pub fn chinese_remainder(hc1: Self, hc2: Self) -> Self {
-        let (p1, n1) = (hc1.p, hc1.n);
-        let (p2, n2) = (hc2.p, hc2.n);
-        let (i1, i2) = modular_inverses(p1, p2);
-        HenselCode {
-            p: p1 * p2,
-            n: (p1 * i1 * n2 + p2 * i2 * n1).rem_euclid(p1 * p2),
+        /// compute gcd of two BigInt, the good-old Euclid way
+        pub fn gcd(b1: &BigInt<L>, b2: &BigInt<L>) -> BigInt<L> {
+            if b1 < b2 {
+                return Self::gcd(b2, b1);
+            }
+            let (mut x0, mut x1) = (b1.clone(), b2.clone());
+            let mut q = x0 / x1;
+            while x1 > &BigInt::<L>::from(0) {
+                (x0, x1) = (x1, x0 - q * x1);
+                q = x0 / x1;
+            }
+            return x0;
         }
     }
+
+    // creates a BigInt from a regular integer
+    impl<const L: usize> From<u128> for BigInt<L> {
+        fn from(k: u128) -> BigInt<L> {
+            BigInt(Wrapping(Uint::<L>::from(k)))
+        }
+    }
+
+    impl<const L: usize> From<&u128> for BigInt<L> {
+        fn from(k: &u128) -> BigInt<L> {
+            BigInt(Wrapping(Uint::<L>::from(k.clone())))
+        }
+    }
+
+    // display a BigInt
+    impl<const L: usize> fmt::Display for BigInt<L> {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "{}", self.0 .0.to_string())
+        }
+    }
+
+    // implement add, sub, mul, div, rem for &BigInt
+    // beware that these operations are only implemented for references `&BigInt`, but return
+    // an owned value `BigInt`: this means `b1 + b2 * b3` will throw an error, while
+    // `&b1 + &(&b2 * &b3)` works
+    impl<'a, 'b, const L: usize> Add<&'b BigInt<L>> for &'a BigInt<L> {
+        type Output = BigInt<L>;
+        fn add(self, other: &'b BigInt<L>) -> BigInt<L> {
+            let (b1, b2) = (self.0, other.0);
+            BigInt(b1 + b2)
+        }
+    }
+    impl<'a, 'b, const L: usize> Sub<&'b BigInt<L>> for &'a BigInt<L> {
+        type Output = BigInt<L>;
+        fn sub(self, other: &'b BigInt<L>) -> BigInt<L> {
+            let (b1, b2) = (self.0, other.0);
+            BigInt(b1 - b2)
+        }
+    }
+    impl<'a, 'b, const L1: usize, const L2: usize> Mul<&'b BigInt<L2>> for &'a BigInt<L1> {
+        type Output = BigInt<{ L1 + L2 }>;
+        fn mul(self, other: &'b BigInt<L2>) -> BigInt<{ L1 + L2 }> {
+            let (b1, b2) = (self.0, other.0);
+            BigInt(b1 * b2)
+        }
+    }
+    impl<'a, 'b, const L: usize> Div<&'b BigInt<L>> for &'a BigInt<L> {
+        type Output = BigInt<L>;
+        fn div(self, other: &'b BigInt<L>) -> BigInt<L> {
+            let (b1, b2) = (self.0, NonZero::new(other.0 .0).unwrap());
+            BigInt(b1 / b2)
+        }
+    }
+    impl<'a, 'b, const L: usize> Rem<&'b BigInt<L>> for &'a BigInt<L> {
+        type Output = BigInt<L>;
+        fn rem(self, other: &'b BigInt<L>) -> BigInt<L> {
+            let (b1, b2) = (self.0, NonZero::new(other.0 .0).unwrap());
+            BigInt(b1 % b2)
+        }
+    }
+
+    // implement arithmetic operations with u128
+    impl<'a, const L: usize> Add<u128> for &'a BigInt<L> {
+        type Output = BigInt<L>;
+        fn add(self, other: u128) -> BigInt<L> {
+            self + &BigInt::from(other)
+        }
+    }
+    impl<'a, const L: usize> Sub<u128> for &'a BigInt<L> {
+        type Output = BigInt<L>;
+        fn sub(self, other: u128) -> BigInt<L> {
+            self - &BigInt::from(other)
+        }
+    }
+    impl<'a, const L: usize> Mul<u128> for &'a BigInt<L> {
+        type Output = BigInt<L>;
+        fn mul(self, other: u128) -> BigInt<L> {
+            self * &BigInt::from(other)
+        }
+    }
+    impl<'a, const L: usize> Div<u128> for &'a BigInt<L> {
+        type Output = BigInt<L>;
+        fn div(self, other: u128) -> BigInt<L> {
+            self / &BigInt::from(other)
+        }
+    }
 }
 
-impl_op_ex!(+ |hc1: &HenselCode, hc2: &HenselCode| -> HenselCode {
-    if hc1.p != hc2.p {
-            panic!("cannot add '{}' and '{}'", hc1, hc2);
-    }
-    HenselCode {p: hc1.p, n: hc1.n + hc2.n}
-});
+mod rational {
 
-impl_op_ex!(*|hc1: &HenselCode, hc2: &HenselCode| -> HenselCode {
-    if hc1.p != hc2.p {
-        panic!("cannot multiply '{}' and '{}'", hc1, hc2);
-    }
-    HenselCode {
-        p: hc1.p,
-        n: hc1.n * hc2.n,
-    }
-});
+    use super::{
+        big_int::BigInt,
+        fmt,
+        hensel_code::HenselCode,
+        ops::{Add, Mul},
+        DEFAULT_LIMBS,
+    };
 
-/// pretty-print HenselCode
-impl fmt::Display for HenselCode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} (mod {})", self.n, self.p)
+    pub struct Rational<const L: usize = DEFAULT_LIMBS> {
+        pub num: BigInt<L>,
+        pub denom: BigInt<L>,
+    }
+
+    /// we want to simplify a rational
+    impl<const L: usize> Rational<L> {
+        pub fn reduce(&self) -> Rational<L> {
+            let gcd = BigInt::gcd(&self.num, &self.denom);
+            let num = &self.num / &gcd;
+            let denom = &self.denom / &gcd;
+            Rational { num, denom }
+        }
+    }
+
+    /// Add two &Rational
+    impl<'a, 'b, const L: usize> Add<&'b Rational<L>> for &'a Rational<L> {
+        type Output = Rational<{ 2 * L }>;
+        fn add(self, other: &'b Rational<L>) -> Rational<{ 2 * L }> {
+            let (r1, r2) = (self, other);
+            Rational {
+                num: &(&r1.num * &r2.denom) + &(&r2.num * &r1.denom),
+                denom: &r1.denom * &r2.denom,
+            }
+            .reduce()
+        }
+    }
+
+    /// Multiply two &Rational
+    impl<'a, 'b, const L: usize> Mul<&'b Rational<L>> for &'a Rational<L> {
+        type Output = Rational<{ 2 * L }>;
+        fn mul(self, other: &'b Rational<L>) -> Rational<{ 2 * L }> {
+            let (r1, r2) = (self, other);
+            Rational {
+                num: &r1.num * &r2.num,
+                denom: &r1.denom * &r2.denom,
+            }
+            .reduce()
+        }
+    }
+
+    /// pretty-print Rational
+    impl<const L: usize> fmt::Display for Rational<L> {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "{}/{}", self.num, self.denom)
+        }
+    }
+
+    /// given an element `hc` of Z/pZ, compute n_max = floor(sqrt((p-1)/2)) and return a rational
+    /// num/denom where:
+    ///  i)   0 <= num   <= n_max,
+    ///  ii)  0 <= denom <= 2*n_max,
+    ///  iii) hc = num/denom (mod p)
+    impl<const L: usize> From<HenselCode<L>> for Rational<L> {
+        fn from(hc: HenselCode<L>) -> Self {
+            let n_max = ((&hc.g - 1) / 2).sqrt();
+
+            // perform (modified) extended euclidean algorithm on (g, n % g)
+            let (mut x0, mut x1) = (hc.g, hc.n);
+            let (mut y0, mut y1) = (BigInt::from(0), BigInt::from(1));
+            while x0 > n_max {
+                let q = x0 / x1;
+                (x0, x1) = (x1, x0 - q * x1);
+                (y0, y1) = (y1, y0 - q * y1);
+            }
+
+            Rational { num: x0, denom: y0 }
+        }
     }
 }
 
-/// given a prime `p` and a rational `r = num/denom`, where p does not divide denom,
-/// returns `r (mod p)`
-impl From<(i128, Rational)> for HenselCode {
-    fn from(params: (i128, Rational)) -> Self {
-        let (p, r) = params;
-        let (id, _) = modular_inverses(r.denom, p);
-        let n = ((r.num.rem_euclid(p)) * id).rem_euclid(p);
-        HenselCode { p, n }
+mod hensel_code {
+    use super::*;
+    use super::{
+        big_int::BigInt,
+        ops::{Add, Mul},
+        rational::Rational,
+        DEFAULT_LIMBS,
+    };
+    use crypto_bigint::modular::runtime_mod::{DynResidue, DynResidueParams};
+
+    // the operation `chinese_remainder` changes the size of the modulus, so we need to track it using a const generics LIMBS
+    pub struct HenselCode<const L: usize = DEFAULT_LIMBS> {
+        params: DynResidueParams<L>,
+        res: DynResidue<L>, // internal variable that stores the residue
+    }
+    impl<const L: usize> HenselCode<L> {
+        pub fn to_big_int(&self) -> BigInt<L> {
+            BigInt::new(self.res.retrieve())
+        }
+
+        pub fn modulus(&self) -> BigInt<L> {
+            BigInt::new(*self.params.modulus())
+        }
+    }
+
+    /// A trait to retrieve the current size of the modulus
+    trait Bounded {
+        const LIMBS: usize;
+
+        fn size(&self) -> usize {
+            Self::LIMBS
+        }
+    }
+
+    impl<const L: usize> Bounded for HenselCode<L> {
+        const LIMBS: usize = L;
+    }
+
+    /// Create an HenselCode from two BigInt
+    pub fn new_hensel_code<const Lg: usize, const Ln: usize>(
+        g: BigInt<Lg>,
+        n: BigInt<Ln>,
+    ) -> HenselCode<Lg> {
+        let params = DynResidueParams::new(&g.0 .0);
+        let res = DynResidue::new(&(&n.resize::<Lg>() % &g).0 .0, params);
+        HenselCode { params, res }
+    }
+
+    impl<const L: usize> HenselCode<L> {
+        pub fn chinese_remainder<const L1: usize, const L2: usize>(
+            hc1: HenselCode<L1>,
+            hc2: HenselCode<L2>,
+        ) -> HenselCode<{ L1 + L2 }> {
+            let zero = BigInt::from(0).0;
+            let (g1, n1) = (
+                hc1.modulus().resize::<{ L1 + L2 }>(),
+                hc1.to_big_int().resize::<{ L1 + L2 }>(),
+            );
+            let (g2, n2) = (
+                hc2.modulus().resize::<{ L1 + L2 }>(),
+                hc2.to_big_int().resize::<{ L1 + L2 }>(),
+            );
+            let g12 = &hc1.modulus() * &hc2.modulus();
+            let (residue_params1, residue_params2, residue_params) = (
+                DynResidueParams::new(&g1),
+                DynResidueParams::new(&g2),
+                DynResidueParams::new(&g12),
+            );
+            let (mut res_g1, mut res_g2) = (
+                DynResidue::new(&g1, residue_params2),
+                DynResidue::new(&g2, residue_params1),
+            );
+            // i1*g1 = 1 (mod g2), i2*g2 = 1 (mod g1)
+            // we need to convert i1 and i2 to a residue mod g1*g2
+            let (mut i1, mut i2) = (
+                DynResidue::new(&res_g1.invert().0.retrieve(), residue_params.clone()),
+                DynResidue::new(&res_g2.invert().0.retrieve(), residue_params.clone()),
+            );
+
+            // change modulus g1 -> g1*g2 and g2 -> g1*g2
+            (res_g1, res_g2) = (
+                DynResidue::new(g1, residue_params.clone()),
+                DynResidue::new(g2, residue_params.clone()),
+            );
+
+            let (res_n1, res_n2) = (
+                DynResidue::new(n1, residue_params.clone()),
+                DynResidue::new(n2, residue_params.clone()),
+            );
+
+            let res = res_g1 * i1 * n2 + res_g2 * i2 * n1;
+
+            HenselCode {
+                params: residue_params,
+                res,
+            }
+        }
+    }
+    /// add two &HenselCodes
+    impl<'a, 'b, const L: usize> Add<&'b HenselCode<L>> for &'a HenselCode<L> {
+        type Output = HenselCode<L>;
+        fn add(self, other: &'b HenselCode<L>) -> HenselCode<L> {
+            if self.modulus() != other.modulus() {
+                panic!("cannot add '{}' and '{}'", self, other);
+            }
+            HenselCode {
+                params: self.params,
+                res: self.res + other.res,
+            }
+        }
+    }
+    /// multiply two &HenselCodes
+    impl<'a, 'b, const L: usize> Mul<&'b HenselCode<L>> for &'a HenselCode<L> {
+        fn mul(self, other: &'b HenselCode<L>) -> HenselCode<L> {
+            if self.modulus() != other.modulus() {
+                panic!("cannot add '{}' and '{}'", self, other);
+            }
+            HenselCode {
+                params: self.params,
+                res: self.res * other.res,
+            }
+        }
+    }
+
+    /// pretty-print HenselCode
+    impl<const L: usize> fmt::Display for HenselCode<L> {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "{} (mod {})", self.n, self.g)
+        }
+    }
+
+    /// given a prime `p` and a rational `r = num/denom`, where p does not divide denom,
+    /// returns `r (mod p)`
+    impl<const L: usize> From<(BigInt<L>, Rational<L>)> for HenselCode<L> {
+        fn from(params: (BigInt, Rational)) -> Self {
+            let (g, r) = params;
+            let params = DynResidueParams::new(g);
+            let denom: DynResidue = DynResidue::new(r.denom, params);
+            let num: DynResidue = DynResidue::new(r.num, params);
+            let (id, _) = r.denom.invert();
+            let res = id * num;
+            HenselCode { params, res }
+        }
     }
 }
 
@@ -140,63 +408,13 @@ pub fn modular_inverses(n: i128, m: i128) -> (i128, i128) {
     (y0, z0)
 }
 
-pub struct CryptographicParameters {
-    p1: i128,
-    p2: i128,
-    p3: i128,
-    p4: i128,
-    p5: i128,
-}
-
-impl CryptographicParameters {
-    /// return the product of the 5 primes used as crypto parameters
-    pub fn public_key(&self) -> i128 {
-        self.p1 * self.p2 * self.p3 * self.p4 * self.p5
-    }
-
-    fn chinese_remainder(&self, n1: i128, n2: i128, n3: i128) -> HenselCode {
-        let hc1 = HenselCode { p: self.p1, n: n1 };
-        let hc2 = HenselCode { p: self.p2, n: n2 };
-        let hc3 = HenselCode { p: self.p3, n: n3 };
-        HenselCode::chinese_remainder(HenselCode::chinese_remainder(hc1, hc2), hc3)
-    }
-
-    pub fn encode(&self, m: i128) -> HenselCode {
-        // TODO: use correct bounds for the variables
-        let g = self.public_key();
-        // let delta_max = g / self.p4;
-        // let s2 = random::<i128>() % self.p2;
-        // let s3 = random::<i128>() % self.p3;
-        // let delta = random::<i128>() % delta_max;
-        let s2 = 0; // FIXME
-        let s3 = 0; // FIXME
-        let delta = 0; // FIXME
-
-        let dp4 = HenselCode {
-            p: g,
-            n: delta * self.p4,
-        };
-
-        let rm = Rational { num: m, denom: 1 };
-        let s1 = Rational {
-            // num: random::<i128>(),
-            num: 0, // FIXME
-            denom: 1,
-        };
-        // intermediary step with a Farey fraction
-        let rational_term = s1 * Rational::from(self.chinese_remainder(0, s2, s3)) + rm;
-        // returns a HenselCode
-        return HenselCode::from((g, rational_term)) + dp4;
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{big_int::BigInt, hensel_code::HenselCode, rational::Rational, *};
 
     #[test]
     fn finds_modular_inverses() {
-        let inv = modular_inverses(37, 5);
+        let inv = modular_inverses(BigInt::from(37), BigInt::from(5));
         assert_eq!(inv, (-2, 15)); // -2*37 + 15*5 = 1
     }
 
@@ -208,13 +426,13 @@ mod tests {
 
     #[test]
     fn translates_rational_to_hensel_code() {
-        fn simple_tester(r: Rational, p: i128) -> () {
+        fn simple_tester(r: Rational, p: BigInt) -> () {
             let num = r.num.clone();
             let denom = r.denom.clone();
             let rclone = Rational { num, denom };
             let hc = HenselCode::from((p, rclone));
             let (id, _) = modular_inverses(denom, p);
-            assert_eq!(hc.p, p);
+            assert_eq!(hc.g, p);
             assert_eq!(hc.n, (num * id).rem_euclid(p));
             println!("rational: {} => hensel code: {}", r, hc);
         }
@@ -244,7 +462,7 @@ mod tests {
             let hcclone = HenselCode { p, n: hc.n };
             let new_r = Rational::from(hcclone);
             let (id, _) = modular_inverses(denom, p);
-            assert_eq!(hc.p, p);
+            assert_eq!(hc.g, p);
             assert_eq!(hc.n, (num * id).rem_euclid(p));
             println!(
                 "rational: {} => hensel code: {} => rational: {}",
@@ -303,26 +521,5 @@ mod tests {
             denom: 982,
         };
         simple_tester(r12, r22);
-    }
-
-    #[test]
-    fn chinese_remainder() {
-        let (p1, p2, p3, p4, p5) = (4919, 7, 11, 13, 17);
-        let crypto_param = CryptographicParameters { p1, p2, p3, p4, p5 };
-        let (n1, n2, n3) = (38, 2, 1);
-        let result = crypto_param.chinese_remainder(n1, n2, n3);
-        // for 0 reason the usual 'modulo' operator `%` has a range of [-p, p]
-        // for `(...) % p` instead of the normal range [0, p]. The sensible version
-        // is instead written `(...).rem_euclid(p)`.
-        assert_eq!(result.n.rem_euclid(4919), n1);
-        assert_eq!(result.n.rem_euclid(7), n2);
-        assert_eq!(result.n.rem_euclid(11), n3);
-        let hc1 = HenselCode { p: p1, n: n1 };
-        let hc2 = HenselCode { p: p2, n: n2 };
-        let hc3 = HenselCode { p: p3, n: n3 };
-        let hc12 = HenselCode::chinese_remainder(hc1, hc2);
-        let hc = HenselCode::chinese_remainder(hc12, hc3);
-        assert_eq!(result.n.rem_euclid(p1 * p2 * p3), hc.n);
-        println!("{} : {}", hc, result);
     }
 }
