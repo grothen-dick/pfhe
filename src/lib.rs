@@ -1,11 +1,6 @@
 // this is for allowing using constants expressions as type parameters
 // used mostly for `chinese_remainder`
 #![feature(generic_const_exprs)]
-// this is for having a default size for BigInt
-#![feature(const_generics_defaults)]
-
-#[macro_use]
-extern crate impl_ops;
 
 mod crypto_parameters;
 
@@ -370,7 +365,7 @@ mod hensel_code {
     /// pretty-print HenselCode
     impl<const L: usize> fmt::Display for HenselCode<L> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            write!(f, "{} (mod {})", self.n, self.g)
+            write!(f, "{} (mod {})", self.to_big_int(), self.modulus())
         }
     }
 
