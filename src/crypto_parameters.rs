@@ -1,10 +1,10 @@
 extern crate crypto_bigint;
 
 use crate::{
-    big_int::BigInt,
+    bigint::BigInt,
     hensel_code::{new_hensel_code, HenselCode},
     rational::Rational,
-    Bounded,
+    shared::Bounded,
 };
 
 use std::{
@@ -116,7 +116,7 @@ mod tests {
     use super::*;
     use crypto_bigint::U256;
 
-    type BigInt = crate::big_int::BigInt;
+    type BigInt = crate::bigint::BigInt;
     const L: usize = U256::LIMBS;
 
     #[test]
@@ -132,16 +132,16 @@ mod tests {
         let (n1, n2, n3) = (BigInt::from(38), BigInt::from(2), BigInt::from(1));
         let result = crypto_param.chinese_remainder(n1, n2, n3);
 
-        assert_eq!((result.to_big_int() % BigInt::from(4919)).0 .0, n1.0 .0);
-        assert_eq!((result.to_big_int() % BigInt::from(7)).0 .0, n2.0 .0);
-        assert_eq!((result.to_big_int() % BigInt::from(11)).0 .0, n3.0 .0);
+        assert_eq!((result.to_bigint() % BigInt::from(4919)).0 .0, n1.0 .0);
+        assert_eq!((result.to_bigint() % BigInt::from(7)).0 .0, n2.0 .0);
+        assert_eq!((result.to_bigint() % BigInt::from(11)).0 .0, n3.0 .0);
 
         let hc1 = new_hensel_code(p1, n1);
         let hc2 = new_hensel_code(p2, n2);
         let hc3 = new_hensel_code(p3, n3);
         let hc12 = HenselCode::<L>::chinese_remainder(hc1, hc2);
         let hc = HenselCode::<L>::chinese_remainder(hc12, hc3);
-        assert_eq!(result.to_big_int().0 .0, hc.to_big_int().0 .0);
+        assert_eq!(result.to_bigint().0 .0, hc.to_bigint().0 .0);
         println!("{} : {}", hc, result);
     }
 }
