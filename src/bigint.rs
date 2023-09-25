@@ -1,10 +1,11 @@
-use super::{
-    fmt,
-    ops::{Add, Div, Mul, Rem, Sub},
-    Clone, From,
-};
 use crate::shared::{Bounded, DEFAULT_LIMBS};
 use crypto_bigint::{rand_core::OsRng, NonZero, RandomMod, Uint, Wrapping, Zero, U128};
+use std::{
+    clone::Clone,
+    convert::From,
+    fmt,
+    ops::{Add, Div, Mul, Rem, Sub},
+};
 
 /// Simple wrapper to abstract details away from crypto_bigint library.
 /// We simply want to be able to:
@@ -98,19 +99,62 @@ impl<'a, 'b, const L: usize> Sub<&'b BigInt<L>> for &'a BigInt<L> {
     }
 }
 
-impl<'a, 'b, const L1: usize, const L2: usize> Mul<&'b BigInt<L2>> for &'a BigInt<L1>
-where
-    BigInt<{ L1 + L2 }>: Sized,
-{
-    type Output = BigInt<{ L1 + L2 }>;
-    fn mul(self, other: &'b BigInt<L2>) -> BigInt<{ L1 + L2 }> {
-        let (b1, b2) = (
-            self.resize::<{ L1 + L2 }>().0,
-            other.resize::<{ L1 + L2 }>().0,
-        );
-        BigInt::<{ L1 + L2 }>(b1 * b2)
-    }
+/// macro to implement arithmetic operations for many sizes
+/// `$op` is the arithmetic operation
+/// `$struct` is the struct that gets implemented
+/// `$l1, $l2, $l3` are some `const` that must be known at compile time
+macro_rules! impl_arithmetics {
+    (+, $struct: ident, $l1:expr, $l2: expr, $l3: expr) => {
+        impl_arithmetics!(Add, add, +, $struct, $l1, $l2, $l3);
+    };
+
+    (-, $struct: ident, $l1:expr, $l2: expr, $l3: expr) => {
+        impl_arithmetics!(Sub, sub, -, $struct, $l1, $l2, $l3);
+    };
+
+    (*, $struct: ident, $l1:expr, $l2: expr, $l3: expr) => {
+        impl_arithmetics!(Mul, mul, *, $struct, $l1, $l2, $l3);
+    };
+
+    (/, $struct: ident, $l1:expr, $l2: expr, $l3: expr) => {
+        impl_arithmetics!(Div, div, /, $struct, $l1, $l2, $l3);
+    };
+
+    ($trait: ident, $function: ident, $op: tt, $struct: ident, $l1:expr, $l2: expr, $l3: expr) => {
+        impl<'a, 'b> $trait<&'b $struct<$l2>> for &'a $struct<$l1>
+        where
+            $struct<$l1>: Sized,
+            $struct<$l2>: Sized,
+            $struct<$l3>: Sized,
+        {
+            type Output = $struct<$l3>;
+            fn $function(self, other: &'b $struct<$l2>) -> $struct<$l3> {
+                $struct::<$l3>(self.0 $op other.0)
+            }
+        }
+        impl $trait<$struct<$l2>> for $struct<$l1>
+        where
+            $struct<$l1>: Sized,
+            $struct<$l2>: Sized,
+            $struct<$l3>: Sized,
+        {
+            type Output = $struct<$l3>;
+            fn $function(self, other: $struct<$l2>) -> $struct<$l3> {
+                &self $op &other
+            }
+        }
+    };
 }
+
+// TODO: repeat with all possible constants
+impl_arithmetics!(+, BigInt, DEFAULT_LIMBS, DEFAULT_LIMBS , DEFAULT_LIMBS);
+impl_arithmetics!(-, BigInt, DEFAULT_LIMBS, DEFAULT_LIMBS , DEFAULT_LIMBS);
+impl_arithmetics!(/, BigInt, DEFAULT_LIMBS, DEFAULT_LIMBS , DEFAULT_LIMBS);
+impl_arithmetics!(*, BigInt, DEFAULT_LIMBS, DEFAULT_LIMBS , {2*DEFAULT_LIMBS});
+impl_arithmetics!(*, BigInt, DEFAULT_LIMBS, { 2 * DEFAULT_LIMBS }, {
+    3 * DEFAULT_LIMBS
+});
+
 impl<'a, 'b, const L: usize> Div<&'b BigInt<L>> for &'a BigInt<L> {
     type Output = BigInt<L>;
     fn div(self, other: &'b BigInt<L>) -> BigInt<L> {
