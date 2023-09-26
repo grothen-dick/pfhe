@@ -106,8 +106,8 @@ mod tests {
             let sum = &r1 + &r2;
             let (n1, n2) = (r1.num, r2.num);
             let (d1, d2) = (r1.denom, r2.denom);
-            assert_eq!(sum.denom.0, (d1 * d2).0);
-            assert_eq!(sum.num.0, (n1 * d2 + d1 * n2).0);
+            assert_eq!(sum.denom.0 .0, (d1 * d2).0 .0);
+            assert_eq!(sum.num.0 .0, (n1 * d2 + d1 * n2).0 .0);
             println!("{} + {} = {}", r1, r2, sum);
         }
         // integer addition

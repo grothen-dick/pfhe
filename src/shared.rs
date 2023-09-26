@@ -10,7 +10,7 @@ pub enum Arithmetics {
 }
 
 /// the type of arithmetics used globally
-pub const ARITHMETICS: Arithmetics = Wrapping;
+pub const ARITHMETICS: Arithmetics = Arithmetics::Wrapping;
 
 /// a macro to create a new BigInt with arithmetics specified by ARITHMETICS
 #[macro_export]

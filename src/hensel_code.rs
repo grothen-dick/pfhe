@@ -44,8 +44,8 @@ pub fn new_hensel_code<const Lg: usize, const Ln: usize>(
     g: BigInt<Lg>,
     n: BigInt<Ln>,
 ) -> HenselCode<Lg> {
-    let params = DynResidueParams::new(&g.0);
-    let res = DynResidue::new(&(&n.resize::<Lg>() % &g).0, params);
+    let params = DynResidueParams::new(&g.0 .0);
+    let res = DynResidue::new(&(&n.resize::<Lg>() % &g).0 .0, params);
     HenselCode { params, res }
 }
 
@@ -99,56 +99,44 @@ impl<'a, 'b, const L: usize> Mul<&'b HenselCode<L>> for &'a HenselCode<L> {
     }
 }
 
-macro_rules! chinese_remainder {
-    ($hc1: path, $hc2: path, $hc3: path, $size: expr) => {
-        pub fn chinese_remainder(hc1: $hc1, hc2: $hc2) -> $hc3 {
-            let (g1, n1) = (
-                hc1.modulus().resize::<$size>(),
-                hc1.to_bigint().resize::<$size>(),
-            );
-            let (g2, n2) = (
-                hc2.modulus().resize::<$size>(),
-                hc2.to_bigint().resize::<$size>(),
-            );
-            let g12 = &hc1.modulus() * &hc2.modulus();
-            let (residue_params1, residue_params2, residue_params) = (
-                DynResidueParams::new(&g1.0),
-                DynResidueParams::new(&g2.0),
-                DynResidueParams::new(&g12.0),
-            );
-            let (mut res_g1, mut res_g2) = (
-                DynResidue::new(&g1.0, residue_params2),
-                DynResidue::new(&g2.0, residue_params1),
-            );
-            // i1*g1 = 1 (mod g2), i2*g2 = 1 (mod g1)
-            // we need to convert i1 and i2 to a residue mod g1*g2
-            let (i1, i2) = (
-                DynResidue::new(&res_g1.invert().0.retrieve(), residue_params.clone()),
-                DynResidue::new(&res_g2.invert().0.retrieve(), residue_params.clone()),
-            );
+pub fn chinese_remainder<const L: usize>(hc1: HenselCode<L>, hc2: HenselCode<L>) -> HenselCode<L> {
+    let (g1, n1) = (hc1.modulus(), hc1.to_bigint());
+    let (g2, n2) = (hc2.modulus(), hc2.to_bigint());
+    let g12 = &hc1.modulus() * &hc2.modulus();
+    let (residue_params1, residue_params2, residue_params) = (
+        DynResidueParams::new(&g1.0 .0),
+        DynResidueParams::new(&g2.0 .0),
+        DynResidueParams::new(&g12.0 .0),
+    );
+    let (mut res_g1, mut res_g2) = (
+        DynResidue::new(&g1.0 .0, residue_params2),
+        DynResidue::new(&g2.0 .0, residue_params1),
+    );
+    // i1*g1 = 1 (mod g2), i2*g2 = 1 (mod g1)
+    // we need to convert i1 and i2 to a residue mod g1*g2
+    let (i1, i2) = (
+        DynResidue::new(&res_g1.invert().0.retrieve(), residue_params.clone()),
+        DynResidue::new(&res_g2.invert().0.retrieve(), residue_params.clone()),
+    );
 
-            // change modulus g1 -> g1*g2 and g2 -> g1*g2
-            (res_g1, res_g2) = (
-                DynResidue::new(&g1.0, residue_params.clone()),
-                DynResidue::new(&g2.0, residue_params.clone()),
-            );
+    // change modulus g1 -> g1*g2 and g2 -> g1*g2
+    (res_g1, res_g2) = (
+        DynResidue::new(&g1.0 .0, residue_params.clone()),
+        DynResidue::new(&g2.0 .0, residue_params.clone()),
+    );
 
-            let (res_n1, res_n2) = (
-                DynResidue::new(&n1.0, residue_params.clone()),
-                DynResidue::new(&n2.0, residue_params.clone()),
-            );
+    let (res_n1, res_n2) = (
+        DynResidue::new(&n1.0 .0, residue_params.clone()),
+        DynResidue::new(&n2.0 .0, residue_params.clone()),
+    );
 
-            let res = res_g1 * i1 * res_n2 + res_g2 * i2 * res_n1;
+    let res = res_g1 * i1 * res_n2 + res_g2 * i2 * res_n1;
 
-            HenselCode {
-                params: residue_params,
-                res,
-            }
-        }
-    };
+    HenselCode {
+        params: residue_params,
+        res,
+    }
 }
-
-chinese_remainder!(HenselCode<4>, HenselCode<4>, HenselCode<8>, 8);
 
 /// pretty-print HenselCode
 impl<const L: usize> fmt::Display for HenselCode<L> {
@@ -162,9 +150,9 @@ impl<const L: usize> fmt::Display for HenselCode<L> {
 impl<const L: usize> From<(BigInt<L>, Rational<L>)> for HenselCode<L> {
     fn from(params: (BigInt<L>, Rational<L>)) -> Self {
         let (g, r) = params;
-        let params = DynResidueParams::new(&g.0);
-        let denom = DynResidue::<L>::new(&r.denom.0, params);
-        let num = DynResidue::<L>::new(&r.num.0, params);
+        let params = DynResidueParams::new(&g.0 .0);
+        let denom = DynResidue::<L>::new(&r.denom.0 .0, params);
+        let num = DynResidue::<L>::new(&r.num.0 .0, params);
         let (id, _) = denom.invert();
         let res = id * num;
         HenselCode { params, res }
