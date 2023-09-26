@@ -40,12 +40,12 @@ impl<const L: usize> Clone for HenselCode<L> {
 }
 
 /// Create an HenselCode from two BigInt
-pub fn new_hensel_code<const Lg: usize, const Ln: usize>(
-    g: BigInt<Lg>,
-    n: BigInt<Ln>,
-) -> HenselCode<Lg> {
+pub fn new_hensel_code<const LG: usize, const LN: usize>(
+    g: BigInt<LG>,
+    n: BigInt<LN>,
+) -> HenselCode<LG> {
     let params = DynResidueParams::new(&g.0 .0);
-    let res = DynResidue::new(&(&n.resize::<Lg>() % &g).0 .0, params);
+    let res = DynResidue::new(&(&n.resize::<LG>() % &g).0 .0, params);
     HenselCode { params, res }
 }
 

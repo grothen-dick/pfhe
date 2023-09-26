@@ -36,8 +36,8 @@ impl<const L: usize> BigInt<L> {
     }
 
     /// resize a BigInt
-    pub fn resize<const Lnew: usize>(&self) -> BigInt<Lnew> {
-        BigInt::new(self.0 .0.resize::<Lnew>())
+    pub fn resize<const LNEW: usize>(&self) -> BigInt<LNEW> {
+        BigInt::new(self.0 .0.resize::<LNEW>())
     }
 
     /// compute square root of BigInt
@@ -139,7 +139,7 @@ mod tests {
     #[test]
     fn add_bigint() {
         fn simple_tester(a: u128, b: u128) {
-            let big_a = BigInt::from(a);
+            let big_a: BigInt<L> = BigInt::from(a);
             let big_b = BigInt::from(b);
             assert_eq!((&big_a + &big_b).0 .0, big_a.0 .0.wrapping_add(&big_b.0 .0))
         }

@@ -20,10 +20,10 @@ impl<const L: usize> Rational<L> {
         let denom = &self.denom / &gcd;
         Rational::<L> { num, denom }
     }
-    pub fn resize<const Lnew: usize>(&self) -> Rational<Lnew> {
-        Rational::<Lnew> {
-            num: self.num.resize::<Lnew>(),
-            denom: self.denom.resize::<Lnew>(),
+    pub fn resize<const LNEW: usize>(&self) -> Rational<LNEW> {
+        Rational::<LNEW> {
+            num: self.num.resize::<LNEW>(),
+            denom: self.denom.resize::<LNEW>(),
         }
     }
 }
