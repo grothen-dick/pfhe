@@ -33,8 +33,8 @@ impl<const L: usize> Bounded for HenselCode<L> {
 impl<const L: usize> Clone for HenselCode<L> {
     fn clone(&self) -> Self {
         HenselCode {
-            params: self.params.clone(),
-            res: self.res.clone(),
+            params: self.params,
+            res: self.res,
         }
     }
 }
@@ -115,19 +115,19 @@ pub fn chinese_remainder<const L: usize>(hc1: HenselCode<L>, hc2: HenselCode<L>)
     // i1*g1 = 1 (mod g2), i2*g2 = 1 (mod g1)
     // we need to convert i1 and i2 to a residue mod g1*g2
     let (i1, i2) = (
-        DynResidue::new(&res_g1.invert().0.retrieve(), residue_params.clone()),
-        DynResidue::new(&res_g2.invert().0.retrieve(), residue_params.clone()),
+        DynResidue::new(&res_g1.invert().0.retrieve(), residue_params),
+        DynResidue::new(&res_g2.invert().0.retrieve(), residue_params),
     );
 
     // change modulus g1 -> g1*g2 and g2 -> g1*g2
     (res_g1, res_g2) = (
-        DynResidue::new(&g1.0 .0, residue_params.clone()),
-        DynResidue::new(&g2.0 .0, residue_params.clone()),
+        DynResidue::new(&g1.0 .0, residue_params),
+        DynResidue::new(&g2.0 .0, residue_params),
     );
 
     let (res_n1, res_n2) = (
-        DynResidue::new(&n1.0 .0, residue_params.clone()),
-        DynResidue::new(&n2.0 .0, residue_params.clone()),
+        DynResidue::new(&n1.0 .0, residue_params),
+        DynResidue::new(&n2.0 .0, residue_params),
     );
 
     let res = res_g1 * i1 * res_n2 + res_g2 * i2 * res_n1;

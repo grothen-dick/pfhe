@@ -54,13 +54,13 @@ impl<const L: usize> BigInt<L> {
         while x1.0.is_zero().unwrap_u8() == 0 {
             (x1, x0) = (&x0 % &x1, x1);
         }
-        return x0;
+        x0
     }
 }
 /// clone a BigInt
 impl<const L: usize> Clone for BigInt<L> {
     fn clone(&self) -> Self {
-        BigInt::new(self.0 .0.clone())
+        BigInt::new(self.0 .0)
     }
 }
 
@@ -74,14 +74,14 @@ impl<const L: usize> From<u128> for BigInt<L> {
 /// creates a BigInt from a regular &integer
 impl<const L: usize> From<&u128> for BigInt<L> {
     fn from(k: &u128) -> BigInt<L> {
-        BigInt(Wrapping::<Uint<L>>(Uint::<L>::from(k.clone())))
+        BigInt(Wrapping::<Uint<L>>(Uint::<L>::from(*k)))
     }
 }
 
 /// display a BigInt
 impl<const L: usize> fmt::Display for BigInt<L> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0.to_string())
+        write!(f, "{}", self.0)
     }
 }
 

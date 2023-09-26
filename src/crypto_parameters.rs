@@ -80,7 +80,7 @@ impl<const L: usize> CryptographicParameters<L> {
         rational_term = rational_term + rm;
         let bigger_r_term = rational_term.resize::<L>();
         // returns a HenselCode
-        return HenselCode::from((g, bigger_r_term)) + dp4;
+        HenselCode::from((g, bigger_r_term)) + dp4
     }
 }
 
