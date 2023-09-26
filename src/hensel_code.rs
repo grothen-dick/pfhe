@@ -2,7 +2,6 @@ use super::{
     fmt,
     ops::{Add, Mul},
     rational::Rational,
-    Clone,
 };
 use crate::bigint::BigInt;
 use crate::shared::{Bounded, DEFAULT_LIMBS};
@@ -10,6 +9,7 @@ use crate::shared::{Bounded, DEFAULT_LIMBS};
 use crypto_bigint::modular::runtime_mod::{DynResidue, DynResidueParams};
 
 // the operation `chinese_remainder` changes the size of the modulus, so we need to track it using a const generics LIMBS
+#[derive(Clone)]
 pub struct HenselCode<const L: usize = DEFAULT_LIMBS> {
     params: DynResidueParams<L>,
     res: DynResidue<L>, // internal variable that stores the residue
@@ -28,15 +28,6 @@ impl<const L: usize> HenselCode<L> {
 
 impl<const L: usize> Bounded for HenselCode<L> {
     const L: usize = L;
-}
-
-impl<const L: usize> Clone for HenselCode<L> {
-    fn clone(&self) -> Self {
-        HenselCode {
-            params: self.params,
-            res: self.res,
-        }
-    }
 }
 
 /// Create an HenselCode from two BigInt

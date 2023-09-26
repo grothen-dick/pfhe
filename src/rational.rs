@@ -7,6 +7,7 @@ use super::{
 
 use crate::bigint::BigInt;
 
+#[derive(Clone)]
 pub struct Rational<const L: usize> {
     pub num: BigInt<L>,
     pub denom: BigInt<L>,
@@ -24,16 +25,6 @@ impl<const L: usize> Rational<L> {
         Rational::<LNEW> {
             num: self.num.resize::<LNEW>(),
             denom: self.denom.resize::<LNEW>(),
-        }
-    }
-}
-
-/// Clone a Rational
-impl<const L: usize> Clone for Rational<L> {
-    fn clone(&self) -> Self {
-        Rational::<L> {
-            num: self.num.clone(),
-            denom: self.denom.clone(),
         }
     }
 }
