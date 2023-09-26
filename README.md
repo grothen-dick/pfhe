@@ -1,5 +1,7 @@
 # :closed_lock_with_key: P-adic Fully Homomorphic Encryption
 
+![main branch ci status](https://github.com/p-adic-fhe/pfhe/actions/workflows/ci.yml/badge.svg?branch=main)
+
 ## :eyeglasses: Description
 
 This repository is a library which provides: 
