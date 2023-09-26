@@ -104,12 +104,15 @@ mod tests {
 
     #[test]
     fn adds_rationals() {
-        fn simple_tester(r1: Rational<L>, r2: Rational<L>) -> () {
-            let sum = &r1 + &r2;
-            let (n1, n2) = (r1.clone().num, r2.clone().num);
-            let (d1, d2) = (r1.clone().denom, r2.clone().denom);
-            assert_eq!(sum.denom.0 .0, (d1.clone() * d2.clone()).0 .0);
-            assert_eq!(sum.num.0 .0, (n1 * d2 + d1 * n2).0 .0);
+        fn simple_tester(r1: &Rational<L>, r2: &Rational<L>) -> () {
+            let sum = r1 + r2;
+            assert_eq!(sum.denom.0 .0, (r1.clone().denom * r2.clone().denom).0 .0);
+            assert_eq!(
+                sum.num.0 .0,
+                (r1.clone().denom * r2.clone().num + r2.clone().denom * r1.clone().num)
+                    .0
+                     .0
+            );
             println!("{} + {} = {}", r1, r2, sum);
         }
         // integer addition
@@ -121,17 +124,17 @@ mod tests {
             num: BigInt::<L>::from(1312 as u128),
             denom: BigInt::<L>::from(1 as u128),
         };
-        simple_tester(r11, r21);
+        simple_tester(&r11, &r21);
 
         // rational addition
         let r12 = Rational::<L> {
             num: BigInt::<L>::from(1337 as u128),
-            denom: BigInt::<L>::from(42 as u128),
+            denom: BigInt::<L>::from(41 as u128),
         };
         let r22 = Rational::<L> {
-            num: BigInt::<L>::from(56 as u128),
+            num: BigInt::<L>::from(57 as u128),
             denom: BigInt::<L>::from(982 as u128),
         };
-        simple_tester(r12, r22);
+        simple_tester(&r12, &r22);
     }
 }
