@@ -1,11 +1,9 @@
+#[macro_use]
+extern crate impl_ops;
+
 use crate::shared::{Bounded, DEFAULT_LIMBS};
 use crypto_bigint::{rand_core::OsRng, NonZero, RandomMod, Uint, Wrapping, Zero, U128};
-use std::{
-    clone::Clone,
-    convert::From,
-    fmt,
-    ops::{Add, Div, Mul, Rem, Sub},
-};
+use std::{clone::Clone, convert::From, fmt, ops};
 
 /// Simple wrapper to abstract details away from crypto_bigint library.
 /// We simply want to be able to:
@@ -15,7 +13,7 @@ use std::{
 /// - generate a random BigInt
 /// - change the size of BigInt
 #[derive(PartialEq, PartialOrd)]
-pub struct BigInt<const L: usize = DEFAULT_LIMBS>(pub Wrapping<Uint<L>>);
+pub struct BigInt<const L: usize = DEFAULT_LIMBS>(pub Uint<L>);
 
 impl<const L: usize> Bounded for BigInt<L> {
     const L: usize = L;
@@ -24,24 +22,25 @@ impl<const L: usize> Bounded for BigInt<L> {
 impl<const L: usize> BigInt<L> {
     /// create a random BigInt modulo `modulus`
     pub fn random_mod(modulus: &BigInt<L>) -> BigInt<L> {
-        BigInt(Wrapping(Uint::<L>::random_mod(
+        BigInt(Uint::<L>::random_mod(
             &mut OsRng,
-            &NonZero::new(modulus.0 .0).unwrap(),
-        )))
+            &NonZero::new(modulus.0).unwrap(),
+        ))
     }
 
     /// wrap a Uint into a BigInt
     pub fn new(n: Uint<L>) -> BigInt<L> {
-        BigInt(Wrapping(n))
+        BigInt(n)
     }
 
+    /// resize a BigInt
     pub fn resize<const Lnew: usize>(&self) -> BigInt<Lnew> {
-        BigInt::new(self.0 .0.resize::<Lnew>())
+        BigInt::new(self.0.resize::<Lnew>())
     }
 
     /// compute square root of BigInt
     pub fn sqrt(self) -> BigInt<L> {
-        BigInt(Wrapping(self.0 .0.sqrt_vartime()))
+        BigInt(self.0.sqrt_vartime())
     }
 
     /// compute gcd of two BigInt, the good-old Euclid way
@@ -50,193 +49,207 @@ impl<const L: usize> BigInt<L> {
             return Self::gcd(b2, b1);
         }
         let (mut x0, mut x1) = (b1.clone(), b2.clone());
-        while x1.0 .0.is_zero().unwrap_u8() == 0 {
+        while x1.0.is_zero().unwrap_u8() == 0 {
             (x1, x0) = (&x0 % &x1, x1);
         }
         return x0;
     }
 }
-// clone a BgInt
+/// clone a BigInt
 impl<const L: usize> Clone for BigInt<L> {
     fn clone(&self) -> Self {
-        BigInt::new(self.0 .0.clone())
+        BigInt::new(self.0.clone())
     }
 }
 
-// creates a BigInt from a regular integer
-impl<const L: usize> From<u128> for BigInt<L> {
-    fn from(k: u128) -> BigInt<L> {
-        BigInt(Wrapping(Uint::<L>::from(k)))
+/// creates a BigInt from a regular integer
+impl From<u128> for BigInt<{ U128::LIMBS }> {
+    fn from(k: u128) -> BigInt<{ U128::LIMBS }> {
+        BigInt(Uint::<{ U128::LIMBS }>::from(k))
     }
 }
 
+/// creates a BigInt from a regular &integer
 impl<const L: usize> From<&u128> for BigInt<L> {
     fn from(k: &u128) -> BigInt<L> {
-        BigInt(Wrapping(Uint::<L>::from(k.clone())))
+        BigInt(Uint::<L>::from(k.clone()))
     }
 }
 
-// display a BigInt
+/// display a BigInt
 impl<const L: usize> fmt::Display for BigInt<L> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0 .0.to_string())
-    }
-}
-
-// implement add, sub, mul, div, rem for &BigInt
-impl<'a, 'b, const L: usize> Add<&'b BigInt<L>> for &'a BigInt<L> {
-    type Output = BigInt<L>;
-    fn add(self, other: &'b BigInt<L>) -> BigInt<L> {
-        let (b1, b2) = (self.0, other.0);
-        BigInt(b1 + b2)
-    }
-}
-impl<'a, 'b, const L: usize> Sub<&'b BigInt<L>> for &'a BigInt<L> {
-    type Output = BigInt<L>;
-    fn sub(self, other: &'b BigInt<L>) -> BigInt<L> {
-        let (b1, b2) = (self.0, other.0);
-        BigInt(b1 - b2)
+        write!(f, "{}", self.0.to_string())
     }
 }
 
 /// macro to implement arithmetic operations for many sizes
-/// `$op` is the arithmetic operation
 /// `$struct` is the struct that gets implemented
 /// `$l1, $l2, $l3` are some `const` that must be known at compile time
-macro_rules! impl_arithmetics {
-    (+, $struct: ident, $l1:expr, $l2: expr, $l3: expr) => {
-        impl_arithmetics!(Add, add, +, $struct, $l1, $l2, $l3);
+macro_rules! impl_sized_ops {
+    (+, $type1: path, $type2: path, $type3:path, $size: expr) => {
+        impl_op_ex!( + | a: $type1, b: $type2 | -> $type3
+            {BigInt((Wrapping(a.0.resize::<$size>()) + Wrapping(b.0.resize::<$size>())).0) }
+        );
     };
 
-    (-, $struct: ident, $l1:expr, $l2: expr, $l3: expr) => {
-        impl_arithmetics!(Sub, sub, -, $struct, $l1, $l2, $l3);
+    (-, $type1: path, $type2: path, $type3:path, $size: expr) => {
+        impl_op_ex!( - | a: $type1, b: $type2 | -> $type3
+            { BigInt((Wrapping(a.0.resize::<$size>()) - Wrapping(b.0.resize::<$size>())).0) }
+        );
     };
 
-    (*, $struct: ident, $l1:expr, $l2: expr, $l3: expr) => {
-        impl_arithmetics!(Mul, mul, *, $struct, $l1, $l2, $l3);
+    (/, $type1: path, $type2: path, $type3:path, $size: expr) => {
+        impl_op_ex!( / | a: $type1, b: $type2 | -> $type3
+            {BigInt( a.0 / NonZero::new(b.0).unwrap() )}
+        );
     };
 
-    (/, $struct: ident, $l1:expr, $l2: expr, $l3: expr) => {
-        impl_arithmetics!(Div, div, /, $struct, $l1, $l2, $l3);
+    (%, $type1: path, $type2: path, $type3:path, $size: expr) => {
+        impl_op_ex!( % | a: $type1, b: $type2 | -> $type3
+            {BigInt( a.0 % NonZero::new(b.0).unwrap() )}
+        );
     };
 
-    ($trait: ident, $function: ident, $op: tt, $struct: ident, $l1:expr, $l2: expr, $l3: expr) => {
-        impl<'a, 'b> $trait<&'b $struct<$l2>> for &'a $struct<$l1>
-        where
-            $struct<$l1>: Sized,
-            $struct<$l2>: Sized,
-            $struct<$l3>: Sized,
-        {
-            type Output = $struct<$l3>;
-            fn $function(self, other: &'b $struct<$l2>) -> $struct<$l3> {
-                $struct::<$l3>(self.0 $op other.0)
-            }
-        }
-        impl $trait<$struct<$l2>> for $struct<$l1>
-        where
-            $struct<$l1>: Sized,
-            $struct<$l2>: Sized,
-            $struct<$l3>: Sized,
-        {
-            type Output = $struct<$l3>;
-            fn $function(self, other: $struct<$l2>) -> $struct<$l3> {
-                &self $op &other
-            }
-        }
+    (*, $type1: path, $type2: path, $type3:path, $size: expr) => {
+        impl_op_ex!( * | a: $type1, b: $type2 | -> $type3
+            {BigInt::<$size>( a.0 * b.0 )}
+        );
+    };
+}
+
+macro_rules! impl_bigint_sized_ops {
+    ($mult1: expr, $mult2: expr, $mult3: expr) => {
+        impl_sized_ops!(
+            *,
+            BigInt<{ $mult1 * U128::LIMBS }>,
+            BigInt<{ $mult2 * U128::LIMBS }>,
+            BigInt<{ $mult3 * U128::LIMBS }>,
+            { $mult3 * U128::LIMBS }
+        );
+    };
+    ($mult1: expr) => {
+        impl_sized_ops!(
+            +,
+            BigInt<{ $mult1 * U128::LIMBS }>,
+            BigInt<{ $mult1 * U128::LIMBS }>,
+            BigInt<{ $mult1 * U128::LIMBS }>,
+            { $mult1 * U128::LIMBS }
+        );
+        impl_sized_ops!(
+            -,
+            BigInt<{ $mult1 * U128::LIMBS }>,
+            BigInt<{ $mult1 * U128::LIMBS }>,
+            BigInt<{ $mult1 * U128::LIMBS }>,
+            { $mult1 * U128::LIMBS }
+        );
+        impl_sized_ops!(
+            /,
+            BigInt<{ $mult1 * U128::LIMBS }>,
+            BigInt<{ $mult1 * U128::LIMBS }>,
+            BigInt<{ $mult1 * U128::LIMBS }>,
+            { $mult1 * U128::LIMBS }
+        );
+        impl_sized_ops!(
+            %,
+            BigInt<{ $mult1 * U128::LIMBS }>,
+            BigInt<{ $mult1 * U128::LIMBS }>,
+            BigInt<{ $mult1 * U128::LIMBS }>,
+            { $mult1 * U128::LIMBS }
+        );
     };
 }
 
 // TODO: repeat with all possible constants
-impl_arithmetics!(+, BigInt, DEFAULT_LIMBS, DEFAULT_LIMBS , DEFAULT_LIMBS);
-impl_arithmetics!(-, BigInt, DEFAULT_LIMBS, DEFAULT_LIMBS , DEFAULT_LIMBS);
-impl_arithmetics!(/, BigInt, DEFAULT_LIMBS, DEFAULT_LIMBS , DEFAULT_LIMBS);
-impl_arithmetics!(*, BigInt, DEFAULT_LIMBS, DEFAULT_LIMBS , {2*DEFAULT_LIMBS});
-impl_arithmetics!(*, BigInt, DEFAULT_LIMBS, { 2 * DEFAULT_LIMBS }, {
-    3 * DEFAULT_LIMBS
-});
+impl_bigint_sized_ops!(1);
+impl_bigint_sized_ops!(2);
+impl_bigint_sized_ops!(3);
+impl_bigint_sized_ops!(4);
+impl_bigint_sized_ops!(5);
+impl_bigint_sized_ops!(6);
+impl_bigint_sized_ops!(7);
+impl_bigint_sized_ops!(8);
 
-impl<'a, 'b, const L: usize> Div<&'b BigInt<L>> for &'a BigInt<L> {
-    type Output = BigInt<L>;
-    fn div(self, other: &'b BigInt<L>) -> BigInt<L> {
-        let (b1, b2) = (self.0, NonZero::new(other.0 .0).unwrap());
-        BigInt(b1 / b2)
-    }
-}
+impl_bigint_sized_ops!(1, 1, 2);
+impl_bigint_sized_ops!(1, 2, 3);
+impl_bigint_sized_ops!(1, 3, 4);
+impl_bigint_sized_ops!(1, 4, 5);
+impl_bigint_sized_ops!(1, 5, 6);
+impl_bigint_sized_ops!(1, 6, 7);
+impl_bigint_sized_ops!(1, 7, 8);
+impl_bigint_sized_ops!(1, 8, 9);
+impl_bigint_sized_ops!(2, 1, 3);
+impl_bigint_sized_ops!(2, 2, 4);
+impl_bigint_sized_ops!(2, 3, 5);
+impl_bigint_sized_ops!(2, 4, 6);
+impl_bigint_sized_ops!(2, 5, 7);
+impl_bigint_sized_ops!(2, 6, 8);
+impl_bigint_sized_ops!(2, 7, 9);
+impl_bigint_sized_ops!(2, 8, 10);
+impl_bigint_sized_ops!(3, 1, 4);
+impl_bigint_sized_ops!(3, 2, 5);
+impl_bigint_sized_ops!(3, 3, 6);
+impl_bigint_sized_ops!(3, 4, 7);
+impl_bigint_sized_ops!(3, 5, 8);
+impl_bigint_sized_ops!(3, 6, 9);
+impl_bigint_sized_ops!(3, 7, 10);
+impl_bigint_sized_ops!(3, 8, 11);
+impl_bigint_sized_ops!(4, 1, 5);
+impl_bigint_sized_ops!(4, 2, 6);
+impl_bigint_sized_ops!(4, 3, 7);
+impl_bigint_sized_ops!(4, 4, 8);
+impl_bigint_sized_ops!(4, 5, 9);
+impl_bigint_sized_ops!(4, 6, 10);
+impl_bigint_sized_ops!(4, 7, 11);
+impl_bigint_sized_ops!(4, 8, 12);
+impl_bigint_sized_ops!(5, 1, 6);
+impl_bigint_sized_ops!(5, 2, 7);
+impl_bigint_sized_ops!(5, 3, 8);
+impl_bigint_sized_ops!(5, 4, 9);
+impl_bigint_sized_ops!(5, 5, 10);
+impl_bigint_sized_ops!(5, 6, 11);
+impl_bigint_sized_ops!(5, 7, 12);
+impl_bigint_sized_ops!(5, 8, 13);
+impl_bigint_sized_ops!(6, 1, 7);
+impl_bigint_sized_ops!(6, 2, 8);
+impl_bigint_sized_ops!(6, 3, 9);
+impl_bigint_sized_ops!(6, 4, 10);
+impl_bigint_sized_ops!(6, 5, 11);
+impl_bigint_sized_ops!(6, 6, 12);
+impl_bigint_sized_ops!(6, 7, 13);
+impl_bigint_sized_ops!(6, 8, 14);
+impl_bigint_sized_ops!(7, 1, 8);
+impl_bigint_sized_ops!(7, 2, 9);
+impl_bigint_sized_ops!(7, 3, 10);
+impl_bigint_sized_ops!(7, 4, 11);
+impl_bigint_sized_ops!(7, 5, 12);
+impl_bigint_sized_ops!(7, 6, 13);
+impl_bigint_sized_ops!(7, 7, 14);
+impl_bigint_sized_ops!(7, 8, 15);
+impl_bigint_sized_ops!(8, 1, 9);
+impl_bigint_sized_ops!(8, 2, 10);
+impl_bigint_sized_ops!(8, 3, 11);
+impl_bigint_sized_ops!(8, 4, 12);
+impl_bigint_sized_ops!(8, 5, 13);
+impl_bigint_sized_ops!(8, 6, 14);
+impl_bigint_sized_ops!(8, 7, 15);
+impl_bigint_sized_ops!(8, 8, 16);
 
-impl<'a, 'b, const L: usize> Rem<&'b BigInt<L>> for &'a BigInt<L> {
-    type Output = BigInt<L>;
-    fn rem(self, other: &'b BigInt<L>) -> BigInt<L> {
-        let (b1, b2) = (self.0, NonZero::new(other.0 .0).unwrap());
-        BigInt(b1 % b2)
-    }
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-// implement operations for BigInt
-impl<const L: usize> Add<BigInt<L>> for BigInt<L> {
-    type Output = BigInt<L>;
-    fn add(self, other: BigInt<L>) -> BigInt<L> {
-        &self + &other
-    }
-}
+    const L: usize = DEFAULT_LIMBS;
 
-impl<const L: usize> Sub<BigInt<L>> for BigInt<L> {
-    type Output = BigInt<L>;
-    fn sub(self, other: BigInt<L>) -> BigInt<L> {
-        &self - &other
-    }
-}
+    #[test]
+    fn add_bigint() {
+        fn simple_tester(a: u128, b: u128) {
+            let big_a = BigInt::from(a);
+            let big_b = BigInt::from(b);
+            assert_eq!((big_a + big_b).0, big_a.0.wrapping_add(big_b.0))
+        }
 
-impl<const L1: usize, const L2: usize> Mul<BigInt<L2>> for BigInt<L1>
-where
-    BigInt<{ L1 + L2 }>: Sized,
-{
-    type Output = BigInt<{ L1 + L2 }>;
-    fn mul(self, other: BigInt<L2>) -> BigInt<{ L1 + L2 }> {
-        &self * &other
-    }
-}
-
-impl<const L: usize> Div<BigInt<L>> for BigInt<L> {
-    type Output = BigInt<L>;
-    fn div(self, other: BigInt<L>) -> BigInt<L> {
-        &self / &other
-    }
-}
-
-impl<const L: usize> Rem<BigInt<L>> for BigInt<L> {
-    type Output = BigInt<L>;
-    fn rem(self, other: BigInt<L>) -> BigInt<L> {
-        &self % &other
-    }
-}
-
-// implement arithmetic operations with u128
-impl<'a, const L: usize> Add<u128> for &'a BigInt<L> {
-    type Output = BigInt<L>;
-    fn add(self, other: u128) -> BigInt<L> {
-        self + &BigInt::from(other)
-    }
-}
-impl<'a, const L: usize> Sub<u128> for &'a BigInt<L> {
-    type Output = BigInt<L>;
-    fn sub(self, other: u128) -> BigInt<L> {
-        self - &BigInt::from(other)
-    }
-}
-
-impl<'a, const L: usize> Mul<u128> for &'a BigInt<L>
-where
-    BigInt<{ L + U128::LIMBS }>: Sized,
-    BigInt<{ U128::LIMBS }>: Sized,
-{
-    type Output = BigInt<{ L + U128::LIMBS }>;
-    fn mul(self, other: u128) -> BigInt<{ L + U128::LIMBS }> {
-        self * &BigInt::<{ U128::LIMBS }>::from(other)
-    }
-}
-impl<'a, const L: usize> Div<u128> for &'a BigInt<L> {
-    type Output = BigInt<L>;
-    fn div(self, other: u128) -> BigInt<L> {
-        self / &BigInt::from(other)
+        simple_tester(0, 1);
+        simple_tester(129812, 92373829187);
     }
 }
