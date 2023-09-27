@@ -17,8 +17,8 @@ pub struct Rational<const L: usize> {
 impl<const L: usize> Rational<L> {
     pub fn reduce(&self) -> Self {
         let gcd = BigInt::gcd(&self.num, &self.denom);
-        let num = &self.num / &gcd;
-        let denom = &self.denom / &gcd;
+        let num = self.num / gcd;
+        let denom = self.denom / gcd;
         Rational::<L> { num, denom }
     }
     pub fn resize<const LNEW: usize>(&self) -> Rational<LNEW> {
@@ -41,10 +41,10 @@ impl<'a, 'b, const L: usize> Add<&'b Rational<L>> for &'a Rational<L> {
     type Output = Rational<L>;
     fn add(self, other: &'b Rational<L>) -> Rational<L> {
         let (r1, r2) = (self, other);
-        let num1 = &r1.num * &r2.denom;
-        let num2 = &r1.denom * &r2.num;
+        let num1 = r1.num * r2.denom;
+        let num2 = r1.denom * r2.num;
         let num: BigInt<L> = num1 + num2;
-        let denom: BigInt<L> = &r1.denom * &r2.denom;
+        let denom: BigInt<L> = r1.denom * r2.denom;
         Rational::<L> { num, denom }.reduce()
     }
 }
@@ -63,8 +63,8 @@ impl<'a, 'b, const L: usize> Mul<&'b Rational<L>> for &'a Rational<L> {
     fn mul(self, other: &'b Rational<L>) -> Rational<L> {
         let (r1, r2) = (self, other);
         Rational::<L> {
-            num: &r1.num * &r2.num,
-            denom: &r1.denom * &r2.denom,
+            num: r1.num * r2.num,
+            denom: r1.denom * r2.denom,
         }
         .reduce()
     }
@@ -85,17 +85,17 @@ impl<const L: usize> Mul<Rational<L>> for Rational<L> {
 ///  iii) hc = num/denom (mod p)
 impl<const L: usize> From<HenselCode<L>> for Rational<L> {
     fn from(hc: HenselCode<L>) -> Self {
-        let n_max = ((&hc.modulus() - &BigInt::<L>::from(1)) / BigInt::<L>::from(2)).sqrt();
+        let n_max = ((hc.modulus() - BigInt::<L>::from(1)) / BigInt::<L>::from(2)).sqrt();
 
         // perform (modified) extended euclidean algorithm on (g, n % g)
         let (mut x0, mut x1) = (hc.modulus(), hc.to_bigint());
         let (mut y0, mut y1) = (BigInt::from(0), BigInt::from(1));
         while x0 > n_max {
-            let q = &x0 / &x1;
-            let new_x0 = x1.clone();
-            let big_x1 = x0 - (&q * &x1);
-            let new_y0 = y1.clone();
-            let big_y1 = y0 - (&q * &y1);
+            let q = x0 / x1;
+            let new_x0 = x1;
+            let big_x1 = x0 - (q * x1);
+            let new_y0 = y1;
+            let big_y1 = y0 - (q * y1);
             (x0, x1) = (new_x0, big_x1);
             (y0, y1) = (new_y0, big_y1);
         }

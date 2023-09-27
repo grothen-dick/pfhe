@@ -43,26 +43,25 @@ impl<const L: usize> CryptographicParameters<L> {
 
     /// return the product of the 5 primes used as crypto parameters
     pub fn public_key(&self) -> BigInt<L> {
-        self._p1.clone() * self._p2.clone() * self._p3.clone() * self._p4.clone() * self._p5.clone()
+        self._p2 * self._p3 * self._p4 * self._p5
     }
 
     pub fn chinese_remainder(&self, n1: BigInt<L>, n2: BigInt<L>, n3: BigInt<L>) -> HenselCode<L> {
-        let hc1 = new_hensel_code(self._p1.clone(), n1);
-        let hc2 = new_hensel_code(self._p2.clone(), n2);
-        let hc3 = new_hensel_code(self._p3.clone(), n3);
+        let hc1 = new_hensel_code(self._p1, n1);
+        let hc2 = new_hensel_code(self._p2, n2);
+        let hc3 = new_hensel_code(self._p3, n3);
         chinese_remainder(chinese_remainder(hc1, hc2), hc3)
     }
 
     pub fn encode(&self, m: BigInt<L>) -> HenselCode<L> {
-        let delta_max: BigInt<L> =
-            self._p1.clone() * self._p2.clone() * self._p3.clone() * self._p5.clone();
-        let g: BigInt<L> = &delta_max * &self._p4;
+        let delta_max: BigInt<L> = self._p1 * self._p2 * self._p3 * self._p5;
+        let g: BigInt<L> = delta_max * self._p4;
         let s1 = BigInt::<L>::random_mod(&self._p1);
         let s2 = BigInt::<L>::random_mod(&self._p2);
         let s3 = BigInt::<L>::random_mod(&self._p3);
         let delta = BigInt::<L>::random_mod(&delta_max);
 
-        let dp4: HenselCode<L> = new_hensel_code(g.clone(), &delta * &self._p4);
+        let dp4: HenselCode<L> = new_hensel_code(g, delta * self._p4);
         let zero = BigInt::<L>::from(0);
         let one = BigInt::<L>::from(1);
 

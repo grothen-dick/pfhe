@@ -36,7 +36,7 @@ pub fn new_hensel_code<const LG: usize, const LN: usize>(
     n: BigInt<LN>,
 ) -> HenselCode<LG> {
     let params = DynResidueParams::new(&g.0 .0);
-    let res = DynResidue::new(&(&n.resize::<LG>() % &g).0 .0, params);
+    let res = DynResidue::new(&(n.resize::<LG>() % g).0 .0, params);
     HenselCode { params, res }
 }
 
@@ -93,7 +93,7 @@ impl<'a, 'b, const L: usize> Mul<&'b HenselCode<L>> for &'a HenselCode<L> {
 pub fn chinese_remainder<const L: usize>(hc1: HenselCode<L>, hc2: HenselCode<L>) -> HenselCode<L> {
     let (g1, n1) = (hc1.modulus(), hc1.to_bigint());
     let (g2, n2) = (hc2.modulus(), hc2.to_bigint());
-    let g12 = &hc1.modulus() * &hc2.modulus();
+    let g12 = hc1.modulus() * hc2.modulus();
     let (residue_params1, residue_params2, residue_params) = (
         DynResidueParams::new(&g1.0 .0),
         DynResidueParams::new(&g2.0 .0),

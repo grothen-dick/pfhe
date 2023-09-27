@@ -50,9 +50,9 @@ impl<const L: usize> BigInt<L> {
         if b1 < b2 {
             return Self::gcd(b2, b1);
         }
-        let (mut x0, mut x1) = (b1.clone(), b2.clone());
+        let (mut x0, mut x1) = (*b1, *b2);
         while x1.0.is_zero().unwrap_u8() == 0 {
-            (x1, x0) = (&x0 % &x1, x1);
+            (x1, x0) = (x0 % x1, x1);
         }
         x0
     }
