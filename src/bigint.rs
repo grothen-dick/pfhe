@@ -12,11 +12,11 @@ use std::{
 
 /// Simple wrapper to abstract details away from crypto_bigint library.
 /// We simply want to be able to:
-/// - do arithmetics with BigInt
-/// - display it with println! for debug purposes
-/// - create a BigInt from a regular integer
-/// - generate a random BigInt
-/// - change the size of a BigInt
+/// do arithmetics with BigInt,
+/// display it with println! for debug purposes,
+/// create a BigInt from a regular integer,
+/// generate a random BigInt and
+/// change the size of a BigInt
 #[derive(PartialEq, PartialOrd, Clone, Copy)]
 pub struct BigInt<const L: usize = DEFAULT_LIMBS>(pub Wrapping<Uint<L>>);
 
