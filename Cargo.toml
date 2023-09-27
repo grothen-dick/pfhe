@@ -1,7 +1,12 @@
 [package]
 name = "pfhe"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
+description = "P-adic Fully Homomorphic Encryption"
+license-file = "LICENSE.txt"
+homepage = "https://github.com/p-adic-fhe/pfhe"
+repository = "https://github.com/p-adic-fhe/pfhe"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
