@@ -83,8 +83,8 @@ impl<const L: usize> Mul<Rational<L>> for Rational<L> {
 ///  i)   0 <= num   <= n_max,
 ///  ii)  0 <= denom <= 2*n_max,
 ///  iii) hc = num/denom (mod p)
-impl<const L: usize> From<HenselCode<L>> for Rational<L> {
-    fn from(hc: HenselCode<L>) -> Self {
+impl<const L: usize> From<&HenselCode<L>> for Rational<L> {
+    fn from(hc: &HenselCode<L>) -> Self {
         let n_max = ((hc.modulus() - BigInt::<L>::from(1)) / BigInt::<L>::from(2)).sqrt();
 
         // perform (modified) extended euclidean algorithm on (g, n % g)

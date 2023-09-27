@@ -21,16 +21,10 @@ mod tests {
 
     #[test]
     fn translates_rational_to_hensel_code() {
-        fn simple_tester(r: Rational<L>, p: BigInt) -> () {
-            let num = r.num.clone();
-            let denom = r.denom.clone();
-            let rclone = Rational::<L> {
-                num: num.clone(),
-                denom: denom.clone(),
-            };
-            let hc = HenselCode::from((p.clone(), rclone));
-            let id_hc = &new_hensel_code(p.clone(), denom).invert();
-            let n_hc = new_hensel_code(p.clone(), num);
+        fn simple_tester(r: &Rational<L>, p: &BigInt) -> () {
+            let hc = HenselCode::from((p, r));
+            let id_hc = &new_hensel_code(p, &(r.denom)).invert();
+            let n_hc = new_hensel_code(p, &(r.num));
             assert_eq!(hc.modulus().0, p.0);
             assert_eq!(hc.to_bigint().0, (id_hc * &n_hc).to_bigint().0);
             println!("rational: {} => hensel code: {}", r, hc);
@@ -43,35 +37,32 @@ mod tests {
             num: BigInt::<L>::from(6 as u128),
             denom: BigInt::<L>::from(1 as u128),
         };
-        simple_tester(r1, p.clone());
+        simple_tester(&r1, &p);
 
         // integer inverse
         let r2 = Rational::<L> {
             num: BigInt::<L>::from(1 as u128),
             denom: BigInt::<L>::from(8 as u128),
         };
-        simple_tester(r2, p.clone());
+        simple_tester(&r2, &p);
 
         // general rational
         let r3 = Rational::<L> {
             num: BigInt::<L>::from(6 as u128),
             denom: BigInt::<L>::from(8 as u128),
         };
-        simple_tester(r3, p);
+        simple_tester(&r3, &p);
     }
 
     #[test]
     fn translates_rational_to_hc_and_back() {
-        fn simple_tester(r: Rational<L>, p: BigInt) -> () {
-            let num = r.clone().num;
-            let denom = r.clone().denom;
-            let hc = HenselCode::from((p.clone(), r.clone()));
-            let hcclone = hc.clone();
-            let new_r = Rational::<L>::from(hcclone);
-            let id_hc = &new_hensel_code(p.clone(), denom).invert();
-            let n_hc = new_hensel_code(p.clone(), num);
+        fn simple_tester(r: &Rational<L>, p: &BigInt) -> () {
+            let hc = HenselCode::from((p, r));
+            let new_r = Rational::<L>::from(&hc);
+            let id_hc = new_hensel_code(p, &r.denom).invert();
+            let n_hc = new_hensel_code(p, &r.num);
             assert_eq!(hc.modulus().0, p.0);
-            assert_eq!(hc.to_bigint().0, (id_hc * &n_hc).to_bigint().0);
+            assert_eq!(hc.to_bigint().0, (id_hc * n_hc).to_bigint().0);
             println!(
                 "rational: {} => hensel code: {} => rational: {}",
                 r, hc, new_r
@@ -85,21 +76,21 @@ mod tests {
             num: BigInt::<L>::from(6 as u128),
             denom: BigInt::<L>::from(1 as u128),
         };
-        simple_tester(r1, p.clone());
+        simple_tester(&r1, &p);
 
         // integer inverse
         let r2 = Rational::<L> {
             num: BigInt::<L>::from(1 as u128),
             denom: BigInt::<L>::from(8 as u128),
         };
-        simple_tester(r2, p.clone());
+        simple_tester(&r2, &p);
 
         // general rational
         let r3 = Rational::<L> {
             num: BigInt::<L>::from(6 as u128),
             denom: BigInt::<L>::from(8 as u128),
         };
-        simple_tester(r3, p);
+        simple_tester(&r3, &p);
     }
 
     #[test]

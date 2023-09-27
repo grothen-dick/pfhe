@@ -32,11 +32,11 @@ impl<const L: usize> Bounded for HenselCode<L> {
 
 /// Create an HenselCode from two BigInt
 pub fn new_hensel_code<const LG: usize, const LN: usize>(
-    g: BigInt<LG>,
-    n: BigInt<LN>,
+    g: &BigInt<LG>,
+    n: &BigInt<LN>,
 ) -> HenselCode<LG> {
     let params = DynResidueParams::new(&g.0 .0);
-    let res = DynResidue::new(&(n.resize::<LG>() % g).0 .0, params);
+    let res = DynResidue::new(&(&n.resize::<LG>() % g).0 .0, params);
     HenselCode { params, res }
 }
 
@@ -138,8 +138,8 @@ impl<const L: usize> fmt::Display for HenselCode<L> {
 
 /// given a prime `p` and a rational `r = num/denom`, where p does not divide denom,
 /// returns `r (mod p)`
-impl<const L: usize> From<(BigInt<L>, Rational<L>)> for HenselCode<L> {
-    fn from(params: (BigInt<L>, Rational<L>)) -> Self {
+impl<const L: usize> From<(&BigInt<L>, &Rational<L>)> for HenselCode<L> {
+    fn from(params: (&BigInt<L>, &Rational<L>)) -> Self {
         let (g, r) = params;
         let params = DynResidueParams::new(&g.0 .0);
         let denom = DynResidue::<L>::new(&r.denom.0 .0, params);
