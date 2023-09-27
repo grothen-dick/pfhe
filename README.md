@@ -2,6 +2,11 @@
 
 ![main branch ci status](https://github.com/p-adic-fhe/pfhe/actions/workflows/ci.yml/badge.svg?branch=main)
 
+## ⚠️ WARNING! ⚠️
+
+This repo contains highly experimental code.
+Expect rapid iteration.
+
 ## :eyeglasses: Description
 
 This repository is a library which provides: 
