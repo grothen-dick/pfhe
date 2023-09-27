@@ -1,11 +1,9 @@
 pub mod bigint;
 pub mod crypto_parameters;
 pub mod hensel_code;
+pub mod macros;
 pub mod rational;
 pub mod shared;
-
-#[macro_use]
-pub mod macros;
 
 use std::{clone::Clone, fmt, ops};
 
