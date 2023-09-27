@@ -14,7 +14,7 @@ use std::{
 /// - create a BigInt from a regular integer
 /// - generate a random BigInt
 /// - change the size of a BigInt
-#[derive(PartialEq, PartialOrd, Clone)]
+#[derive(PartialEq, PartialOrd, Clone, Copy)]
 pub struct BigInt<const L: usize = DEFAULT_LIMBS>(pub Wrapping<Uint<L>>);
 
 impl<const L: usize> Bounded for BigInt<L> {

@@ -106,13 +106,8 @@ mod tests {
     fn adds_rationals() {
         fn simple_tester(r1: &Rational<L>, r2: &Rational<L>) -> () {
             let sum = r1 + r2;
-            assert_eq!(sum.denom.0 .0, (r1.clone().denom * r2.clone().denom).0 .0);
-            assert_eq!(
-                sum.num.0 .0,
-                (r1.clone().denom * r2.clone().num + r2.clone().denom * r1.clone().num)
-                    .0
-                     .0
-            );
+            assert_eq!(sum.denom.0 .0, (r1.denom * r2.denom).0 .0);
+            assert_eq!(sum.num.0 .0, (r1.denom * r2.num + r2.denom * r1.num).0 .0);
             println!("{} + {} = {}", r1, r2, sum);
         }
         // integer addition
