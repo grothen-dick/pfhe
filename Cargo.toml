@@ -8,8 +8,6 @@ homepage = "https://github.com/p-adic-fhe/pfhe"
 repository = "https://github.com/p-adic-fhe/pfhe"
 readme = "README.md"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 crypto-bigint = { version = "0.5.3", features = ["rand"] }
 impl_ops = "0.1.1"
