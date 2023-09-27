@@ -103,3 +103,43 @@ impl<const L: usize> From<&HenselCode<L>> for Rational<L> {
         Rational::<L> { num: x0, denom: y0 }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::BigInt;
+    use super::Rational;
+    use crate::shared::DEFAULT_LIMBS;
+
+    const L: usize = DEFAULT_LIMBS;
+
+    #[test]
+    fn adds_rationals() {
+        fn simple_tester(r1: &Rational<L>, r2: &Rational<L>) -> () {
+            let sum = r1 + r2;
+            assert_eq!(sum.denom.0 .0, (r1.denom * r2.denom).0 .0);
+            assert_eq!(sum.num.0 .0, (r1.denom * r2.num + r2.denom * r1.num).0 .0);
+            println!("{} + {} = {}", r1, r2, sum);
+        }
+        // integer addition
+        let r11 = Rational::<L> {
+            num: BigInt::<L>::from(3 as u128),
+            denom: BigInt::<L>::from(1 as u128),
+        };
+        let r21 = Rational::<L> {
+            num: BigInt::<L>::from(1312 as u128),
+            denom: BigInt::<L>::from(1 as u128),
+        };
+        simple_tester(&r11, &r21);
+
+        // rational addition
+        let r12 = Rational::<L> {
+            num: BigInt::<L>::from(1337 as u128),
+            denom: BigInt::<L>::from(41 as u128),
+        };
+        let r22 = Rational::<L> {
+            num: BigInt::<L>::from(57 as u128),
+            denom: BigInt::<L>::from(982 as u128),
+        };
+        simple_tester(&r12, &r22);
+    }
+}
