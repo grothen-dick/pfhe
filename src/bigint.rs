@@ -1,4 +1,7 @@
-use crate::shared::{Bounded, DEFAULT_LIMBS};
+use crate::{
+    impl_arithmetic_op, impl_divlike_op,
+    shared::{Bounded, DEFAULT_LIMBS},
+};
 use crypto_bigint::{rand_core::OsRng, NonZero, RandomMod, Uint, Wrapping, Zero};
 use std::{
     clone::Clone,
@@ -79,47 +82,9 @@ impl<const L: usize> fmt::Display for BigInt<L> {
     }
 }
 
-macro_rules! impl_arithmetic_op {
-    ($trait: ident, $function: ident, $op: tt) => {
-        impl<'a, 'b, const L: usize> $trait<&'b BigInt<L>> for &'a BigInt<L> {
-            type Output = BigInt<L>;
-            fn $function(self, other: &'b BigInt<L>) -> BigInt<L> {
-                BigInt(self.0 $op other.0)
-            }
-        }
-
-        impl<const L: usize> $trait<BigInt<L>> for BigInt<L> {
-            type Output = BigInt<L>;
-            fn $function(self, other: BigInt<L>) -> BigInt<L> {
-                &self $op &other
-            }
-        }
-
-    };
-}
-
 impl_arithmetic_op!(Add, add, +);
 impl_arithmetic_op!(Sub, sub, -);
 impl_arithmetic_op!(Mul, mul, *);
-
-macro_rules! impl_divlike_op {
-    ($trait: ident, $function: ident, $op: tt) => {
-        impl<'a, 'b, const L: usize> $trait<&'b BigInt<L>> for &'a BigInt<L> {
-            type Output = BigInt<L>;
-            fn $function(self, other: &'b BigInt<L>) -> BigInt<L> {
-                BigInt(self.0 $op NonZero::new(other.0.0).unwrap())
-            }
-        }
-
-        impl<const L: usize> $trait<BigInt<L>> for BigInt<L> {
-            type Output = BigInt<L>;
-            fn $function(self, other: BigInt<L>) -> BigInt<L> {
-                &self $op &other
-            }
-        }
-
-    };
-}
 
 impl_divlike_op!(Div, div, /);
 impl_divlike_op!(Rem, rem, %);

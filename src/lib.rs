@@ -4,11 +4,10 @@ pub mod hensel_code;
 pub mod rational;
 pub mod shared;
 
-use std::{
-    clone::Clone,
-    fmt, // used for displaying stuff
-    ops,
-};
+#[macro_use]
+pub mod macros;
+
+use std::{clone::Clone, fmt, ops};
 
 #[cfg(test)]
 mod tests {
