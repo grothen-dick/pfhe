@@ -10,8 +10,8 @@ use crate::{
 use std::convert::From;
 
 /// This is a private key, with five private parameters.
-/// rust doesn't like "const generics expressions" it is needed to assume that
-/// the product p1*...*p5 is representable by a BigInt of size <L>.
+/// Rust doesn't like "const generics expressions" so it is needed to assume that
+/// the product p1*...*p5 is representable by a BigInt of size L.
 pub struct CryptographicParameters<const L: usize> {
     _p1: BigInt<L>,
     _p2: BigInt<L>,
@@ -41,7 +41,7 @@ impl<const L: usize> CryptographicParameters<L> {
         }
     }
 
-    /// return the product of the 5 primes used as crypto parameters
+    /// Returns the product of the 5 primes used as crypto parameters
     pub fn public_key(&self) -> BigInt<L> {
         self._p2 * self._p3 * self._p4 * self._p5
     }

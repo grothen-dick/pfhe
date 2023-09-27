@@ -13,7 +13,7 @@ pub struct Rational<const L: usize> {
     pub denom: BigInt<L>,
 }
 
-/// basic functionalities: simplify common factors, resize
+/// Basic functionalities: simplify common factors, resize
 impl<const L: usize> Rational<L> {
     pub fn reduce(&self) -> Self {
         let gcd = BigInt::gcd(&self.num, &self.denom);
@@ -29,14 +29,14 @@ impl<const L: usize> Rational<L> {
     }
 }
 
-/// pretty-print Rational
+/// Pretty-prints Rational
 impl<const L: usize> fmt::Display for Rational<L> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}/{}", self.num, self.denom)
     }
 }
 
-/// Add two &Rational
+/// Adds two &Rational
 impl<'a, 'b, const L: usize> Add<&'b Rational<L>> for &'a Rational<L> {
     type Output = Rational<L>;
     fn add(self, other: &'b Rational<L>) -> Rational<L> {
@@ -49,7 +49,7 @@ impl<'a, 'b, const L: usize> Add<&'b Rational<L>> for &'a Rational<L> {
     }
 }
 
-/// Add two Rational
+/// Adds two Rational
 impl<const L: usize> Add<Rational<L>> for Rational<L> {
     type Output = Rational<L>;
     fn add(self, other: Rational<L>) -> Rational<L> {
@@ -57,7 +57,7 @@ impl<const L: usize> Add<Rational<L>> for Rational<L> {
     }
 }
 
-/// Multiply two &Rational
+/// Multiplies two &Rational
 impl<'a, 'b, const L: usize> Mul<&'b Rational<L>> for &'a Rational<L> {
     type Output = Rational<L>;
     fn mul(self, other: &'b Rational<L>) -> Rational<L> {
@@ -70,7 +70,7 @@ impl<'a, 'b, const L: usize> Mul<&'b Rational<L>> for &'a Rational<L> {
     }
 }
 
-/// Multiply two Rational
+/// Multiplies two Rational
 impl<const L: usize> Mul<Rational<L>> for Rational<L> {
     type Output = Rational<L>;
     fn mul(self, other: Rational<L>) -> Rational<L> {
@@ -78,7 +78,7 @@ impl<const L: usize> Mul<Rational<L>> for Rational<L> {
     }
 }
 
-/// given an element `hc` of Z/pZ, compute n_max = floor(sqrt((p-1)/2)) and return a rational
+/// Given an element `hc` of Z/pZ, compute n_max = floor(sqrt((p-1)/2)), returns a rational
 /// num/denom where:
 ///  i)   0 <= num   <= n_max,
 ///  ii)  0 <= denom <= 2*n_max,

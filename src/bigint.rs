@@ -25,7 +25,7 @@ impl<const L: usize> Bounded for BigInt<L> {
 }
 
 impl<const L: usize> BigInt<L> {
-    /// create a random BigInt modulo `modulus`
+    /// Creates a random BigInt modulo `modulus`
     pub fn random_mod(modulus: &BigInt<L>) -> BigInt<L> {
         BigInt(Wrapping::<Uint<L>>(Uint::<L>::random_mod(
             &mut OsRng,
@@ -33,22 +33,22 @@ impl<const L: usize> BigInt<L> {
         )))
     }
 
-    /// wrap a Uint into a BigInt
+    /// Wraps a Uint into a BigInt
     pub fn new(n: Uint<L>) -> BigInt<L> {
         BigInt(Wrapping(n))
     }
 
-    /// resize a BigInt
+    /// Resizes a BigInt
     pub fn resize<const LNEW: usize>(&self) -> BigInt<LNEW> {
         BigInt::new(self.0 .0.resize::<LNEW>())
     }
 
-    /// compute square root of BigInt
+    /// Computes square root of BigInt
     pub fn sqrt(self) -> BigInt<L> {
         BigInt(Wrapping::<Uint<L>>(self.0 .0.sqrt_vartime()))
     }
 
-    /// compute gcd of two BigInt, the good-old Euclid way
+    /// Computes gcd of two BigInt, the good-old Euclid way
     pub fn gcd(b1: &BigInt<L>, b2: &BigInt<L>) -> BigInt<L> {
         if b1 < b2 {
             return Self::gcd(b2, b1);
@@ -61,21 +61,21 @@ impl<const L: usize> BigInt<L> {
     }
 }
 
-/// creates a BigInt from a regular integer
+/// Creates a BigInt from a regular integer
 impl<const L: usize> From<u128> for BigInt<L> {
     fn from(k: u128) -> BigInt<L> {
         BigInt(Wrapping::<Uint<L>>(Uint::<L>::from(k)))
     }
 }
 
-/// creates a BigInt from a regular &integer
+/// Creates a BigInt from a regular &integer
 impl<const L: usize> From<&u128> for BigInt<L> {
     fn from(k: &u128) -> BigInt<L> {
         BigInt(Wrapping::<Uint<L>>(Uint::<L>::from(*k)))
     }
 }
 
-/// display a BigInt
+/// Displays a BigInt
 impl<const L: usize> fmt::Display for BigInt<L> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)

@@ -15,12 +15,12 @@ pub struct HenselCode<const L: usize = DEFAULT_LIMBS> {
     res: DynResidue<L>, // internal variable that stores the residue
 }
 impl<const L: usize> HenselCode<L> {
-    /// return a BigInt n, with residue `res` mod `params.modulus()`
+    /// Returns a BigInt n, with residue `res` mod `params.modulus()`
     pub fn to_bigint(&self) -> BigInt<L> {
         BigInt::new(self.res.retrieve())
     }
 
-    /// return the modulus
+    /// Returns the modulus
     pub fn modulus(&self) -> BigInt<L> {
         BigInt::new(*self.params.modulus())
     }
@@ -30,7 +30,7 @@ impl<const L: usize> Bounded for HenselCode<L> {
     const L: usize = L;
 }
 
-/// Create an HenselCode from two BigInt
+/// Creates an HenselCode from two BigInt
 pub fn new_hensel_code<const LG: usize, const LN: usize>(
     g: &BigInt<LG>,
     n: &BigInt<LN>,
@@ -48,14 +48,14 @@ impl<const L: usize> HenselCode<L> {
         }
     }
 }
-/// add two HenselCodes
+/// Adds two HenselCodes
 impl<const L: usize> Add<HenselCode<L>> for HenselCode<L> {
     type Output = HenselCode<L>;
     fn add(self, other: HenselCode<L>) -> HenselCode<L> {
         &self + &other
     }
 }
-/// multiply two HenselCodes
+/// Multiplies two HenselCodes
 impl<const L: usize> Mul<HenselCode<L>> for HenselCode<L> {
     type Output = HenselCode<L>;
     fn mul(self, other: HenselCode<L>) -> HenselCode<L> {
@@ -63,7 +63,7 @@ impl<const L: usize> Mul<HenselCode<L>> for HenselCode<L> {
     }
 }
 
-/// add two &HenselCodes
+/// Adds two &HenselCodes
 impl<'a, 'b, const L: usize> Add<&'b HenselCode<L>> for &'a HenselCode<L> {
     type Output = HenselCode<L>;
     fn add(self, other: &'b HenselCode<L>) -> HenselCode<L> {
@@ -76,7 +76,7 @@ impl<'a, 'b, const L: usize> Add<&'b HenselCode<L>> for &'a HenselCode<L> {
         }
     }
 }
-/// multiply two &HenselCodes
+/// Multiplies two &HenselCodes
 impl<'a, 'b, const L: usize> Mul<&'b HenselCode<L>> for &'a HenselCode<L> {
     type Output = HenselCode<L>;
     fn mul(self, other: &'b HenselCode<L>) -> HenselCode<L> {
@@ -129,14 +129,14 @@ pub fn chinese_remainder<const L: usize>(hc1: HenselCode<L>, hc2: HenselCode<L>)
     }
 }
 
-/// pretty-print HenselCode
+/// Pretty-prints HenselCode
 impl<const L: usize> fmt::Display for HenselCode<L> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{} (mod {})", self.to_bigint(), self.modulus())
     }
 }
 
-/// given a prime `p` and a rational `r = num/denom`, where p does not divide denom,
+/// Given a prime `p` and a rational `r = num/denom`, where p does not divide denom,
 /// returns `r (mod p)`
 impl<const L: usize> From<(&BigInt<L>, &Rational<L>)> for HenselCode<L> {
     fn from(params: (&BigInt<L>, &Rational<L>)) -> Self {
