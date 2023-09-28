@@ -109,7 +109,7 @@ mod tests {
         };
         println!("message: {}", message);
         let ciphertext = crypto_params.encrypt(message.clone());
-        println!("cipertext: {}", ciphertext);
+        println!("ciphertext: {}", ciphertext);
         let decrypted = crypto_params.decrypt(ciphertext);
         assert_eq!(message, decrypted);
     }

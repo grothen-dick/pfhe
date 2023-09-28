@@ -88,7 +88,11 @@ impl<const L: usize> From<&u128> for BigInt<L> {
 /// Displays a BigInt
 impl<const L: usize> fmt::Display for BigInt<L> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
+        write!(
+            f,
+            "0x{}",
+            self.to_uint().to_string().trim_start_matches('0')
+        )
     }
 }
 
