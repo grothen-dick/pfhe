@@ -38,8 +38,14 @@ impl<const L: usize> BigInt<L> {
         BigInt(Wrapping(n))
     }
 
+    /// Returns underlying Uint
     pub fn to_uint(self) -> Uint<L> {
         self.0 .0
+    }
+
+    /// Returns `true` if it is zero
+    pub fn is_zero(&self) -> bool {
+        self.0.is_zero().into()
     }
 
     /// Resizes a BigInt
@@ -58,7 +64,7 @@ impl<const L: usize> BigInt<L> {
             return Self::gcd(b2, b1);
         }
         let (mut x0, mut x1) = (*b1, *b2);
-        while x1.0.is_zero().unwrap_u8() == 0 {
+        while !x1.is_zero() {
             (x1, x0) = (x0 % x1, x1);
         }
         x0

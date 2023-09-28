@@ -24,7 +24,7 @@ macro_rules! impl_divlike_op {
         impl<'a, 'b, const L: usize> $trait<&'b BigInt<L>> for &'a BigInt<L> {
             type Output = BigInt<L>;
             fn $function(self, other: &'b BigInt<L>) -> BigInt<L> {
-                BigInt(self.0 $op NonZero::new(other.0.0).unwrap())
+                BigInt(self.0 $op NonZero::new(other.to_uint()).unwrap())
             }
         }
 

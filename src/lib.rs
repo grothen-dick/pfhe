@@ -9,6 +9,8 @@ use std::{clone::Clone, fmt, ops};
 
 #[cfg(test)]
 mod tests {
+    use crate::crypto_parameters::CryptographicParameters;
+
     use super::bigint::BigInt;
     use super::hensel_code::{new_hensel_code, HenselCode};
     use super::rational::Rational;
@@ -88,5 +90,27 @@ mod tests {
             denom: BigInt::<L>::from(8 as u128),
         };
         simple_tester(&r3, &p);
+    }
+
+    #[test]
+    fn encrypt_decrypt() {
+        let (p1, p2, p3, p4, p5) = (
+            BigInt::<L>::from(7919),
+            BigInt::<L>::from(37),
+            BigInt::<L>::from(41),
+            BigInt::<L>::from(5897),
+            BigInt::<L>::from(7759),
+        );
+        let crypto_params: CryptographicParameters<L> =
+            CryptographicParameters::<L>::new(p1, p2, p3, p4, p5);
+        let message: Rational<L> = Rational {
+            num: BigInt::<L>::from(43),
+            denom: BigInt::<L>::from(44),
+        };
+        println!("message: {}", message);
+        let ciphertext = crypto_params.encrypt(message.clone());
+        println!("cipertext: {}", ciphertext);
+        let decrypted = crypto_params.decrypt(ciphertext);
+        assert_eq!(message, decrypted);
     }
 }

@@ -24,6 +24,12 @@ impl<const L: usize> HenselCode<L> {
     pub fn modulus(&self) -> BigInt<L> {
         BigInt::new(*self.params.modulus())
     }
+
+    pub fn generate_zero(modulus: &BigInt<L>) -> HenselCode<L> {
+        let params = DynResidueParams::new(&modulus.to_uint());
+        let zero = DynResidue::new(&BigInt::<L>::from(0).to_uint(), params);
+        HenselCode { params, res: zero }
+    }
 }
 
 impl<const L: usize> Bounded for HenselCode<L> {
@@ -141,9 +147,14 @@ impl<const L: usize> fmt::Display for HenselCode<L> {
 impl<const L: usize> From<(&BigInt<L>, &Rational<L>)> for HenselCode<L> {
     fn from(params: (&BigInt<L>, &Rational<L>)) -> Self {
         let (g, r) = params;
+
         let params = DynResidueParams::new(&g.to_uint());
         let denom = DynResidue::<L>::new(&r.denom.to_uint(), params);
         let num = DynResidue::<L>::new(&r.num.to_uint(), params);
+
+        if BigInt::<L>::gcd(&g, &r.denom) > BigInt::<L>::from(1) {
+            return Self::generate_zero(g);
+        }
         let (id, _) = denom.invert();
         let res = id * num;
         HenselCode { params, res }

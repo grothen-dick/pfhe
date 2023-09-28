@@ -53,7 +53,7 @@ impl<const L: usize> CryptographicParameters<L> {
         chinese_remainder(chinese_remainder(hc1, hc2), hc3)
     }
 
-    pub fn encode(&self, m: BigInt<L>) -> HenselCode<L> {
+    pub fn encrypt(&self, m: Rational<L>) -> HenselCode<L> {
         let delta_max: BigInt<L> = self._p1 * self._p2 * self._p3 * self._p5;
         let g: BigInt<L> = delta_max * self._p4;
         let s1 = BigInt::<L>::random_mod(&self._p1);
@@ -65,10 +65,6 @@ impl<const L: usize> CryptographicParameters<L> {
         let zero = BigInt::<L>::from(0);
         let one = BigInt::<L>::from(1);
 
-        let rm = Rational {
-            num: m.resize::<L>(),
-            denom: one.resize::<L>(),
-        };
         let rs1 = Rational {
             num: s1,
             denom: one,
@@ -76,10 +72,16 @@ impl<const L: usize> CryptographicParameters<L> {
         // intermediary step with a Farey fraction
         let r_noise: Rational<L> = Rational::<L>::from(&self.chinese_remainder(zero, s2, s3));
         let mut rational_term: Rational<L> = rs1 * r_noise;
-        rational_term = rational_term + rm;
+        rational_term = rational_term + m;
         let bigger_r_term = rational_term.resize::<L>();
         // returns a HenselCode
         HenselCode::from((&g, &bigger_r_term)) + dp4
+    }
+
+    pub fn decrypt(&self, hc: HenselCode<L>) -> Rational<L> {
+        let hc_p4 = new_hensel_code(&self._p4, &hc.to_bigint());
+        let r_p4: Rational<L> = Rational::<L>::from(&hc_p4);
+        Rational::<L>::from(&HenselCode::<L>::from((&self._p1, &r_p4)))
     }
 }
 
