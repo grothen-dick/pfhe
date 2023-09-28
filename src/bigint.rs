@@ -17,7 +17,7 @@ use std::{
 /// create a BigInt from a regular integer,
 /// generate a random BigInt and
 /// change the size of a BigInt
-#[derive(PartialEq, PartialOrd, Clone, Copy)]
+#[derive(PartialEq, PartialOrd, Clone, Copy, Debug)]
 pub struct BigInt<const L: usize = DEFAULT_LIMBS>(pub Wrapping<Uint<L>>);
 
 impl<const L: usize> Bounded for BigInt<L> {
@@ -29,7 +29,7 @@ impl<const L: usize> BigInt<L> {
     pub fn random_mod(modulus: &BigInt<L>) -> BigInt<L> {
         BigInt(Wrapping::<Uint<L>>(Uint::<L>::random_mod(
             &mut OsRng,
-            &NonZero::new(modulus.0 .0).unwrap(),
+            &NonZero::new(modulus.to_uint()).unwrap(),
         )))
     }
 
@@ -38,14 +38,18 @@ impl<const L: usize> BigInt<L> {
         BigInt(Wrapping(n))
     }
 
+    pub fn to_uint(self) -> Uint<L> {
+        self.0 .0
+    }
+
     /// Resizes a BigInt
     pub fn resize<const LNEW: usize>(&self) -> BigInt<LNEW> {
-        BigInt::new(self.0 .0.resize::<LNEW>())
+        BigInt::new(self.to_uint().resize::<LNEW>())
     }
 
     /// Computes square root of BigInt
     pub fn sqrt(self) -> BigInt<L> {
-        BigInt(Wrapping::<Uint<L>>(self.0 .0.sqrt_vartime()))
+        BigInt(Wrapping::<Uint<L>>(self.to_uint().sqrt_vartime()))
     }
 
     /// Computes gcd of two BigInt, the good-old Euclid way
@@ -100,7 +104,10 @@ mod tests {
         fn simple_tester(a: u128, b: u128) {
             let big_a: BigInt<L> = BigInt::from(a);
             let big_b = BigInt::from(b);
-            assert_eq!((&big_a + &big_b).0 .0, big_a.0 .0.wrapping_add(&big_b.0 .0))
+            assert_eq!(
+                (&big_a + &big_b).to_uint(),
+                big_a.to_uint().wrapping_add(&big_b.to_uint())
+            )
         }
 
         simple_tester(0, 1);

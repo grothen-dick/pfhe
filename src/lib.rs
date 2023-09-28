@@ -22,8 +22,8 @@ mod tests {
             let hc = HenselCode::from((p, r));
             let id_hc = &new_hensel_code(p, &(r.denom)).invert();
             let n_hc = new_hensel_code(p, &(r.num));
-            assert_eq!(hc.modulus().0, p.0);
-            assert_eq!(hc.to_bigint().0, (id_hc * &n_hc).to_bigint().0);
+            assert_eq!(&hc.modulus(), p);
+            assert_eq!(hc.to_bigint(), (id_hc * &n_hc).to_bigint());
             println!("rational: {} => hensel code: {}", r, hc);
         }
 
@@ -58,8 +58,8 @@ mod tests {
             let new_r = Rational::<L>::from(&hc);
             let id_hc = new_hensel_code(p, &r.denom).invert();
             let n_hc = new_hensel_code(p, &r.num);
-            assert_eq!(hc.modulus().0, p.0);
-            assert_eq!(hc.to_bigint().0, (id_hc * n_hc).to_bigint().0);
+            assert_eq!(&hc.modulus(), p);
+            assert_eq!(hc.to_bigint(), (id_hc * n_hc).to_bigint());
             println!(
                 "rational: {} => hensel code: {} => rational: {}",
                 r, hc, new_r

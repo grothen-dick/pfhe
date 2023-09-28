@@ -7,7 +7,7 @@ use super::{
 
 use crate::bigint::BigInt;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Rational<const L: usize> {
     pub num: BigInt<L>,
     pub denom: BigInt<L>,
@@ -116,8 +116,11 @@ mod tests {
     fn adds_rationals() {
         fn simple_tester(r1: &Rational<L>, r2: &Rational<L>) -> () {
             let sum = r1 + r2;
-            assert_eq!(sum.denom.0 .0, (r1.denom * r2.denom).0 .0);
-            assert_eq!(sum.num.0 .0, (r1.denom * r2.num + r2.denom * r1.num).0 .0);
+            assert_eq!(sum.denom.to_uint(), (r1.denom * r2.denom).to_uint());
+            assert_eq!(
+                sum.num.to_uint(),
+                (r1.denom * r2.num + r2.denom * r1.num).to_uint()
+            );
             println!("{} + {} = {}", r1, r2, sum);
         }
         // integer addition

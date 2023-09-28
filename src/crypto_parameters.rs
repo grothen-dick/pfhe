@@ -109,16 +109,16 @@ mod tests {
         let (n1, n2, n3) = (BigInt::from(38), BigInt::from(2), BigInt::from(1));
         let result = crypto_param.chinese_remainder(n1.clone(), n2.clone(), n3.clone());
 
-        assert_eq!((result.to_bigint() % BigInt::from(4919)).0, n1.clone().0);
-        assert_eq!((result.to_bigint() % BigInt::from(7)).0, n2.clone().0);
-        assert_eq!((result.to_bigint() % BigInt::from(11)).0, n3.clone().0);
+        assert_eq!((result.to_bigint() % BigInt::from(4919)), n1.clone());
+        assert_eq!((result.to_bigint() % BigInt::from(7)), n2.clone());
+        assert_eq!((result.to_bigint() % BigInt::from(11)), n3.clone());
 
         let hc1 = hensel_code::new_hensel_code(&p1, &n1);
         let hc2 = hensel_code::new_hensel_code(&p2, &n2);
         let hc3 = hensel_code::new_hensel_code(&p3, &n3);
         let hc12 = hensel_code::chinese_remainder(hc1, hc2);
         let hc = hensel_code::chinese_remainder(hc12, hc3);
-        assert_eq!(result.to_bigint().0, hc.to_bigint().0);
+        assert_eq!(result.to_bigint(), hc.to_bigint());
         println!("{} : {}", hc, result);
     }
 }
