@@ -58,7 +58,7 @@ impl<const L: usize> BigInt<L> {
         BigInt(Wrapping::<Uint<L>>(self.to_uint().sqrt_vartime()))
     }
 
-    /// Computes gcd of two BigInt, the good-old Euclid way
+    /// Computes gcd of two &BigInt, the good-old Euclid way
     pub fn gcd(b1: &BigInt<L>, b2: &BigInt<L>) -> BigInt<L> {
         if b1 < b2 {
             return Self::gcd(b2, b1);

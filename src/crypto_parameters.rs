@@ -46,6 +46,7 @@ impl<const L: usize> CryptographicParameters<L> {
         self._p2 * self._p3 * self._p4 * self._p5
     }
 
+    /// returns a number `n` such that `n = n1 (mod p1)`, `n = n2 (mod p2)`, `n = n3 (mod p3)`
     pub fn chinese_remainder(&self, n1: BigInt<L>, n2: BigInt<L>, n3: BigInt<L>) -> HenselCode<L> {
         let hc1 = new_hensel_code(&self._p1, &n1);
         let hc2 = new_hensel_code(&self._p2, &n2);
@@ -64,34 +65,37 @@ impl<const L: usize> CryptographicParameters<L> {
         let dp4: HenselCode<L> = new_hensel_code(&g, &(delta * self._p4));
         let zero = BigInt::<L>::from(0);
         let one = BigInt::<L>::from(1);
-        println!("s1: {}", s1);
-        println!("s2: {}", s2);
-        println!("s3: {}", s3);
 
+        // generate an encoding of zero
+        let hc_noise = self.chinese_remainder(zero, s2, s3);
+        // divide the result by p1 in order to get a correct HenselCode -> Rational conversion
+        let hc_noise_1 = HenselCode::<L>::from((
+            &(self._p1 * self._p2 * self._p3),
+            &Rational::<L> {
+                num: hc_noise.to_bigint(),
+                denom: self._p1,
+            },
+        ));
+
+        // convert to a Rational
+        let r_noise: Rational<L> = Rational::<L> {
+            num: self._p1,
+            denom: BigInt::<L>::from(1),
+        } * Rational::<L>::from(&hc_noise_1);
+
+        // create a Rational from s1
         let rs1 = Rational {
             num: s1,
             denom: one,
         };
-        // intermediary step with a Farey fraction
-        let hc_noise = self.chinese_remainder(zero, s2, s3);
-        println!("hc_noise: {}", hc_noise);
-        println!(
-            "gcd(noise, p1): {}",
-            BigInt::gcd(&hc_noise.to_bigint(), &self._p1)
-        );
-        println!("delta*p4: {}", dp4);
-        println!(
-            "gcd(delta*p4, p4): {}",
-            BigInt::gcd(&dp4.to_bigint(), &self._p4)
-        );
-
-        let r_noise: Rational<L> = Rational::<L>::from(&hc_noise);
-        println!("r_noise: {}", r_noise);
+        // multiply rational encoding of zero by s1
         let mut rational_term: Rational<L> = rs1 * r_noise;
-        println!("rational_term = s1*r_noise: {}", rational_term);
+
+        // add the message `m` (a Rational by assumption)
         rational_term = rational_term + m;
-        println!("rational_term + m: {}", rational_term);
-        // returns a HenselCode
+
+        // convert to HenselCode, add another noise `delta*p4`
+        // return the result
         HenselCode::from((&g, &rational_term)) + dp4
     }
 
