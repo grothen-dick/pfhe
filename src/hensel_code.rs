@@ -152,7 +152,7 @@ impl<const L: usize> From<(&BigInt<L>, &Rational<L>)> for HenselCode<L> {
         let denom = DynResidue::<L>::new(&r.denom.to_uint(), params);
         let num = DynResidue::<L>::new(&r.num.to_uint(), params);
 
-        if BigInt::<L>::gcd(&g, &r.denom) > BigInt::<L>::from(1) {
+        if BigInt::<L>::gcd(g, &r.denom) > BigInt::<L>::from(1) {
             return Self::generate_zero(g);
         }
         let (id, _) = denom.invert();
