@@ -63,7 +63,7 @@ impl<const L: usize> BigInt<L> {
         if b1 < b2 {
             return Self::gcd(b2, b1);
         }
-        let (mut x0, mut x1) = (*b1, *b2);
+        let (mut x0, mut x1) = (b1.clone(), b2.clone());
         while !x1.is_zero() {
             (x1, x0) = (x0 % x1, x1);
         }

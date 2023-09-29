@@ -73,13 +73,13 @@ impl<const L: usize> CryptographicParameters<L> {
             &(self._p1 * self._p2 * self._p3),
             &Rational::<L> {
                 num: hc_noise.to_bigint(),
-                denom: self._p1.clone(),
+                denom: self._p1,
             },
         ));
 
         // convert to a Rational
         let r_noise: Rational<L> = Rational::<L> {
-            num: self._p1.clone(),
+            num: self._p1,
             denom: BigInt::<L>::from(1),
         } * Rational::<L>::from(&hc_noise_1);
 
