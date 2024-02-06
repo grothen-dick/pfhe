@@ -11,3 +11,10 @@ readme = "README.md"
 [dependencies]
 crypto-bigint = { version = "0.5.3", features = ["rand"] }
 impl_ops = "0.1.1"
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "my_benchmark"
+harness = false
