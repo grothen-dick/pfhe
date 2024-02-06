@@ -36,7 +36,11 @@ jobs:
       - name: Test
         run: |
           cargo check
-          cargo test --all          
+          cargo test --all
+
+      - name: Bench
+        run: |
+          cargo bench
 
       - name: Build
         run: |
