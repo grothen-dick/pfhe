@@ -16,5 +16,5 @@ impl_ops = "0.1.1"
 criterion = "0.3"
 
 [[bench]]
-name = "my_benchmark"
+name = "default"
 harness = false
