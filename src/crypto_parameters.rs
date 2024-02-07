@@ -45,7 +45,7 @@ impl<const L: usize> CryptographicParameters<L> {
     pub fn from_params(lambda: u32, d: u32) -> CryptographicParameters<L> {
         let rho = lambda;
         let eta = 2 * (d + 2) * lambda;
-        let gamma: u32 = (lambda / lambda.ilog2()) * ((eta - rho).pow(2) as u32);
+        let gamma: u32 = (lambda / lambda.ilog2()) * (eta - rho).pow(2);
         let mu = gamma - eta - 2 * lambda;
         CryptographicParameters::<L> {
             _p1: BigInt::new(generate_prime(Some(((rho + 1) as u16).into()))),
