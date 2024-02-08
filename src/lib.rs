@@ -9,7 +9,7 @@ use std::{clone::Clone, fmt, ops};
 
 #[cfg(test)]
 mod tests {
-    use crate::crypto_parameters::CryptographicParameters;
+    use crate::crypto_parameters::PrivateKeySchemeCryptographicParameters;
 
     use super::bigint::BigInt;
     use super::hensel_code::{new_hensel_code, HenselCode};
