@@ -1,7 +1,10 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use pfhe::{
-    bigint::BigInt, crypto_parameters::CryptographicParameters, hensel_code::HenselCode,
-    rational::Rational, shared::DEFAULT_LIMBS,
+    bigint::BigInt,
+    crypto_parameters::{EncryptionScheme, PrivateKeySchemeCryptographicParameters},
+    hensel_code::HenselCode,
+    rational::Rational,
+    shared::DEFAULT_LIMBS,
 };
 use std::time::Instant;
 
@@ -22,7 +25,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
     println!("generating crypto params ...");
     let now = Instant::now();
-    let crypto_params = CryptographicParameters::<L1>::from_params(4, 3);
+    let crypto_params = PrivateKeySchemeCryptographicParameters::<L1>::new(4, 3);
     println!("crypto params generated in {:.2?}", now.elapsed());
 
     let message: Rational<L1> = Rational {

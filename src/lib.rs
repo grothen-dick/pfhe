@@ -9,7 +9,7 @@ use std::{clone::Clone, fmt, ops};
 
 #[cfg(test)]
 mod tests {
-    use crate::crypto_parameters::CryptographicParameters;
+    use crate::crypto_parameters::{EncryptionScheme, PrivateKeySchemeCryptographicParameters};
 
     use super::bigint::BigInt;
     use super::hensel_code::{new_hensel_code, HenselCode};
@@ -94,22 +94,13 @@ mod tests {
 
     #[test]
     fn encrypt_decrypt() {
-        let (p1, p2, p3, p4, p5) = (
-            BigInt::<L>::from(7919),
-            BigInt::<L>::from(37),
-            BigInt::<L>::from(41),
-            BigInt::<L>::from(5897),
-            BigInt::<L>::from(7759),
-        );
-        let crypto_params: CryptographicParameters<L> =
-            CryptographicParameters::<L>::new(p1, p2, p3, p4, p5);
+        const L: usize = 170;
+        let crypto_params = PrivateKeySchemeCryptographicParameters::<L>::new(8, 3);
         let message: Rational<L> = Rational {
             num: BigInt::<L>::from(43),
             denom: BigInt::<L>::from(44),
         };
-        println!("message: {}", message);
         let ciphertext = crypto_params.encrypt(message.clone());
-        println!("ciphertext: {}", ciphertext);
         let decrypted = crypto_params.decrypt(ciphertext);
         assert_eq!(message, decrypted);
     }

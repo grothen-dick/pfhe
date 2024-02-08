@@ -8,12 +8,18 @@ use crate::{
 };
 
 use crypto_primes::generate_prime;
-use std::convert::From;
+use std::{convert::From, fmt};
+
+pub trait EncryptionScheme<const L: usize> {
+    fn chinese_remainder(&self, n1: BigInt<L>, n2: BigInt<L>, n3: BigInt<L>) -> HenselCode<L>;
+    fn encrypt(&self, m: Rational<L>) -> HenselCode<L>;
+    fn decrypt(&self, hc: HenselCode<L>) -> Rational<L>;
+}
 
 /// This is a private key, with five private parameters.
 /// Rust doesn't like "const generics expressions" so it is needed to assume that
 /// the product p1*...*p5 is representable by a BigInt of size L.
-pub struct CryptographicParameters<const L: usize> {
+pub struct PrivateKeySchemeCryptographicParameters<const L: usize> {
     _p1: BigInt<L>,
     _p2: BigInt<L>,
     _p3: BigInt<L>,
@@ -21,55 +27,46 @@ pub struct CryptographicParameters<const L: usize> {
     _p5: BigInt<L>,
 }
 
-impl<const L: usize> Bounded for CryptographicParameters<L> {
-    const L: usize = L;
+impl<const L: usize> fmt::Display for PrivateKeySchemeCryptographicParameters<L> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "p1: {}, p2: {}, p3: {}, p4: {}, p5: {}",
+            self._p1, self._p2, self._p3, self._p4, self._p5
+        )
+    }
 }
 
-impl<const L: usize> CryptographicParameters<L> {
-    pub fn new(
-        _p1: BigInt<L>,
-        _p2: BigInt<L>,
-        _p3: BigInt<L>,
-        _p4: BigInt<L>,
-        _p5: BigInt<L>,
-    ) -> CryptographicParameters<L> {
-        CryptographicParameters::<L> {
-            _p1,
-            _p2,
-            _p3,
-            _p4,
-            _p5,
-        }
-    }
-
-    pub fn from_params(lambda: u32, d: u32) -> CryptographicParameters<L> {
+impl<const L: usize> PrivateKeySchemeCryptographicParameters<L> {
+    pub fn new(lambda: u32, d: u32) -> PrivateKeySchemeCryptographicParameters<L> {
         let rho = lambda;
         let eta = 2 * (d + 2) * lambda;
         let gamma: u32 = (lambda / lambda.ilog2()) * (eta - rho).pow(2);
         let mu = gamma - eta - 2 * lambda;
-        CryptographicParameters::<L> {
-            _p1: BigInt::new(generate_prime(Some(((rho + 1) as u16).into()))),
-            _p2: BigInt::new(generate_prime(Some(((rho / 2) as u16).into()))),
-            _p3: BigInt::new(generate_prime(Some(((rho / 2) as u16).into()))),
-            _p4: BigInt::new(generate_prime(Some((eta as u16).into()))),
-            _p5: BigInt::new(generate_prime(Some((mu as u16).into()))),
+        PrivateKeySchemeCryptographicParameters::<L> {
+            _p1: BigInt::<L>::new(generate_prime::<L>(Some(((rho + 1) as u16).into()))),
+            _p2: BigInt::<L>::new(generate_prime::<L>(Some(((rho / 2) as u16).into()))),
+            _p3: BigInt::<L>::new(generate_prime::<L>(Some(((rho / 2) as u16).into()))),
+            _p4: BigInt::<L>::new(generate_prime::<L>(Some((eta as u16).into()))),
+            _p5: BigInt::<L>::new(generate_prime::<L>(Some((mu as u16).into()))),
         }
     }
+}
 
-    /// Returns the product of the 5 primes used as crypto parameters
-    pub fn public_key(&self) -> BigInt<L> {
-        self._p2 * self._p3 * self._p4 * self._p5
-    }
+impl<const L: usize> Bounded for PrivateKeySchemeCryptographicParameters<L> {
+    const L: usize = L;
+}
 
+impl<const L: usize> EncryptionScheme<L> for PrivateKeySchemeCryptographicParameters<L> {
     /// returns a number `n` such that `n = n1 (mod p1)`, `n = n2 (mod p2)`, `n = n3 (mod p3)`
-    pub fn chinese_remainder(&self, n1: BigInt<L>, n2: BigInt<L>, n3: BigInt<L>) -> HenselCode<L> {
+    fn chinese_remainder(&self, n1: BigInt<L>, n2: BigInt<L>, n3: BigInt<L>) -> HenselCode<L> {
         let hc1 = new_hensel_code(&self._p1, &n1);
         let hc2 = new_hensel_code(&self._p2, &n2);
         let hc3 = new_hensel_code(&self._p3, &n3);
         chinese_remainder(chinese_remainder(hc1, hc2), hc3)
     }
 
-    pub fn encrypt(&self, m: Rational<L>) -> HenselCode<L> {
+    fn encrypt(&self, m: Rational<L>) -> HenselCode<L> {
         let delta_max: BigInt<L> = self._p1 * self._p2 * self._p3 * self._p5;
         let g: BigInt<L> = delta_max * self._p4;
         let s1 = BigInt::<L>::random_mod(&self._p1);
@@ -114,7 +111,7 @@ impl<const L: usize> CryptographicParameters<L> {
         HenselCode::from((&g, &rational_term)) + dp4
     }
 
-    pub fn decrypt(&self, hc: HenselCode<L>) -> Rational<L> {
+    fn decrypt(&self, hc: HenselCode<L>) -> Rational<L> {
         let hc_p4 = new_hensel_code(&self._p4, &hc.to_bigint());
         let r_p4: Rational<L> = Rational::<L>::from(&hc_p4);
         Rational::<L>::from(&HenselCode::<L>::from((&self._p1, &r_p4)))
@@ -123,7 +120,7 @@ impl<const L: usize> CryptographicParameters<L> {
 
 #[cfg(test)]
 mod tests {
-    use super::CryptographicParameters;
+    use super::{EncryptionScheme, PrivateKeySchemeCryptographicParameters};
     use crate::hensel_code;
 
     type BigInt = crate::bigint::BigInt;
@@ -137,13 +134,13 @@ mod tests {
             BigInt::from(13),
             BigInt::from(17),
         );
-        let crypto_param = CryptographicParameters::new(
-            p1.clone(),
-            p2.clone(),
-            p3.clone(),
-            p4.clone(),
-            p5.clone(),
-        );
+        let crypto_param = PrivateKeySchemeCryptographicParameters {
+            _p1: p1.clone(),
+            _p2: p2.clone(),
+            _p3: p3.clone(),
+            _p4: p4.clone(),
+            _p5: p5.clone(),
+        };
         let (n1, n2, n3) = (BigInt::from(38), BigInt::from(2), BigInt::from(1));
         let result = crypto_param.chinese_remainder(n1.clone(), n2.clone(), n3.clone());
 
