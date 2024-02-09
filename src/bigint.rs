@@ -17,6 +17,7 @@ pub trait BigIntTrait: PartialEq + PartialOrd + Clone + fmt::Display {
     fn add(&self, other: &Self) -> Self;
     fn sub(&self, other: &Self) -> Self;
     fn mul(&self, other: &Self) -> Self;
+    fn pow(&self, other: u128) -> Self;
     fn div(&self, other: &Self) -> Self;
     fn rem(&self, other: &Self) -> Self;
     fn gcd(&self, other: &Self) -> Self;
@@ -89,6 +90,13 @@ impl<const L: usize> BigIntTrait for WrappingCryptoBigInt<L> {
     fn mul(&self, other: &Self) -> Self {
         Self(self.0 * other.0)
     }
+    fn pow(&self, other: u128) -> Self {
+        let mut result: Self = Self::from_u128(1);
+        for i in 0..(other) {
+            result = result.mul(&Self::from_u128(other));
+        }
+        result
+    }
     fn div(&self, other: &Self) -> Self {
         Self(self.0 / NonZero::new(other.0 .0).unwrap())
     }
@@ -135,6 +143,13 @@ impl<const L: usize> BigIntTrait for CheckedCryptoBigInt<L> {
     }
     fn mul(&self, other: &Self) -> Self {
         Self(self.0 * other.0)
+    }
+    fn pow(&self, other: u128) -> Self {
+        let mut result: Self = Self::from_u128(1);
+        for i in 0..(other) {
+            result = result.mul(&Self::from_u128(other));
+        }
+        result
     }
     fn div(&self, other: &Self) -> Self {
         Self(Checked(
