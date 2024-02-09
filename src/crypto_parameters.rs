@@ -123,6 +123,77 @@ impl<T: BigIntTrait> EncryptionScheme<T> for PrivateKeySchemeCryptographicParame
     }
 }
 
+/// This is a private key, with five private parameters.
+/// Rust doesn't like "const generics expressions" so it is needed to assume that
+/// the product p1*...*p5 is representable by a BigInt of size L.
+pub struct PublicKeySchemeCryptographicParameters<T: BigIntTrait> {
+    _p1: T,
+    _p2: T,
+    _p3: T,
+    _p4: T,
+    g: T,
+    g_prime: T,
+    e: HenselCode<T>,
+}
+
+impl<T: BigIntTrait> PublicKeySchemeCryptographicParameters<T> {
+    pub fn new(_p1: T, _p2: T, _p3: T, _p4: T, e: HenselCode<T>) -> Self {
+        let g = _p1.mul(&_p2.mul(&_p3.mul(&_p4)));
+        let g_prime = _p3.mul(&_p4);
+        Self {
+            _p1,
+            _p2,
+            _p3,
+            _p4,
+            g,
+            g_prime,
+            e,
+        }
+    }
+
+    /// generates 5 distincts primes from security parameters `lambda, d`
+    pub fn new_from_params(lambda: u32, d: u32) -> Self {
+        let rho = lambda;
+        let eta = d * lambda;
+        let mu = d.pow(2) * lambda * lambda.ilog(2) - eta - 2 * lambda - 3;
+        let gamma = 2 * eta + 3 * lambda / 2 + mu + 3;
+        let mut primes: Vec<T> = Vec::new();
+        for size in [rho, rho + 3, eta, eta] {
+            loop {
+                let current_p = T::generate_prime(Some(size as usize));
+                if !primes.contains(&current_p) {
+                    primes.push(current_p);
+                    break;
+                }
+            }
+        }
+        let [p1, p2, p3, p4prime] = &primes[..];
+        let p4 = p4prime.pow((f64::from(mu) / f64::from(eta + 1)).ceil() as u128);
+        let g = p1.mul(&p2.mul(&p3.mul(&p4)));
+        let t = T::random_mod(&T::from_u128(2u128.pow(lambda - 1)));
+        let delta_e = T::random_mod(&T::from_u128(2u128.pow(gamma - eta)));
+        let hc_noise = chinese_remainder(
+            new_hensel_code(p1, &T::from_u128(0)),
+            new_hensel_code(p2, &t),
+        );
+        let hc_p3_res = HenselCode::<T>::from((p3, &Rational::from(&hc_noise))).res;
+        let e = new_hensel_code(&g, &hc_p3_res.add(&delta_e.mul(&p3)));
+        Self::new(
+            primes[0].clone(),
+            primes[1].clone(),
+            primes[2].clone(),
+            primes[3].clone(),
+            e,
+        )
+    }
+}
+
+impl<T: BigIntTrait> EncryptionScheme<T> for PublicKeySchemeCryptographicParameters<T> {
+    fn encrypt(&self, m: Rational<T>) -> HenselCode<T> {}
+
+    fn decrypt(&self, hc: HenselCode<T>) -> Rational<T> {}
+}
+
 #[cfg(test)]
 mod tests {
     use super::{EncryptionScheme, PrivateKeySchemeCryptographicParameters};
