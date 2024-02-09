@@ -9,7 +9,7 @@ use std::{clone::Clone, fmt, ops};
 
 #[cfg(test)]
 mod tests {
-    use crate::crypto_parameters::CryptographicParameters;
+    use crate::crypto_parameters::{EncryptionScheme, PrivateKeySchemeCryptographicParameters};
 
     use super::bigint::{BigIntTrait, WrappingCryptoBigInt};
     use super::hensel_code::{new_hensel_code, HenselCode};
@@ -102,8 +102,8 @@ mod tests {
             T::from_u128(5897),
             T::from_u128(7759),
         );
-        let crypto_params: CryptographicParameters<T> =
-            CryptographicParameters::<T>::new(p1, p2, p3, p4, p5);
+        let crypto_params: PrivateKeySchemeCryptographicParameters<T> =
+            PrivateKeySchemeCryptographicParameters::<T>::new(p1, p2, p3, p4, p5);
         let message: Rational<T> = Rational {
             num: T::from_u128(43),
             denom: T::from_u128(44),

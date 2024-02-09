@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use pfhe::{
     bigint::{BigIntTrait, WrappingCryptoBigInt},
-    crypto_parameters::CryptographicParameters,
+    crypto_parameters::PrivateKeySchemeCryptographicParameters,
     hensel_code::HenselCode,
     rational::Rational,
 };
@@ -25,7 +25,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
     println!("generating crypto params ...");
     let now = Instant::now();
-    let crypto_params = CryptographicParameters::<T1>::from_params(8, 3);
+    let crypto_params = PrivateKeySchemeCryptographicParameters::<T1>::from_params(8, 3);
     println!("crypto params generated in {:.2?}", now.elapsed());
 
     let message: Rational<T1> = Rational {

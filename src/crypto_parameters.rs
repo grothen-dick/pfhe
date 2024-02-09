@@ -11,7 +11,7 @@ use std::convert::From;
 /// This is a private key, with five private parameters.
 /// Rust doesn't like "const generics expressions" so it is needed to assume that
 /// the product p1*...*p5 is representable by a BigInt of size L.
-pub struct CryptographicParameters<T: BigIntTrait> {
+pub struct PrivateKeySchemeCryptographicParameters<T: BigIntTrait> {
     _p1: T,
     _p2: T,
     _p3: T,
@@ -19,9 +19,15 @@ pub struct CryptographicParameters<T: BigIntTrait> {
     _p5: T,
 }
 
-impl<T: BigIntTrait> CryptographicParameters<T> {
-    pub fn new(_p1: T, _p2: T, _p3: T, _p4: T, _p5: T) -> CryptographicParameters<T> {
-        CryptographicParameters::<T> {
+pub trait EncryptionScheme<T: BigIntTrait> {
+    fn chinese_remainder(&self, n1: T, n2: T, n3: T) -> HenselCode<T>;
+    fn encrypt(&self, m: Rational<T>) -> HenselCode<T>;
+    fn decrypt(&self, hc: HenselCode<T>) -> Rational<T>;
+}
+
+impl<T: BigIntTrait> PrivateKeySchemeCryptographicParameters<T> {
+    pub fn new(_p1: T, _p2: T, _p3: T, _p4: T, _p5: T) -> Self {
+        Self {
             _p1,
             _p2,
             _p3,
@@ -31,7 +37,7 @@ impl<T: BigIntTrait> CryptographicParameters<T> {
     }
 
     /// generates 5 distincts primes from security parameters `lambda, d`
-    pub fn from_params(lambda: u32, d: u32) -> CryptographicParameters<T> {
+    pub fn new_from_params(lambda: u32, d: u32) -> Self {
         let rho = lambda;
         let eta = 2 * (d + 2) * lambda;
         let gamma: u32 = (lambda / lambda.ilog2()) * (eta - rho).pow(2);
@@ -40,48 +46,32 @@ impl<T: BigIntTrait> CryptographicParameters<T> {
         for size in [(rho + 1), (rho / 2), (rho / 2), eta, mu] {
             loop {
                 let current_p = T::generate_prime(Some(size as usize));
-                // println!("{current_p}");
-                // for p in &primes {
-                //     print!("{p}, ");
-                // }
-                // println!("");
                 if !primes.contains(&current_p) {
                     primes.push(current_p);
                     break;
                 }
             }
         }
-        CryptographicParameters::<T> {
-            _p1: primes[0].clone(),
-            _p2: primes[1].clone(),
-            _p3: primes[2].clone(),
-            _p4: primes[3].clone(),
-            _p5: primes[4].clone(),
-        }
+        Self::new(
+            primes[0].clone(),
+            primes[1].clone(),
+            primes[2].clone(),
+            primes[3].clone(),
+            primes[4].clone(),
+        )
     }
+}
 
-    /// Returns the product of the 5 primes used as crypto parameters
-    pub fn public_key(&self) -> T {
-        self._p1
-            .mul(&self._p2)
-            .mul(&self._p3)
-            .mul(&self._p4)
-            .mul(&self._p5)
-    }
-
+impl<T: BigIntTrait> EncryptionScheme<T> for PrivateKeySchemeCryptographicParameters<T> {
     /// returns a number `n` such that `n = n1 (mod p1)`, `n = n2 (mod p2)`, `n = n3 (mod p3)`
-    pub fn chinese_remainder(&self, n1: T, n2: T, n3: T) -> HenselCode<T> {
+    fn chinese_remainder(&self, n1: T, n2: T, n3: T) -> HenselCode<T> {
         let hc1 = new_hensel_code(&self._p1, &n1);
         let hc2 = new_hensel_code(&self._p2, &n2);
         let hc3 = new_hensel_code(&self._p3, &n3);
         chinese_remainder(chinese_remainder(hc1, hc2), hc3)
     }
 
-    pub fn encrypt(&self, m: Rational<T>) -> HenselCode<T> {
-        // println!(
-        //     "p1: {}, p2: {}, p3: {}, p4: {}, p5: {}",
-        //     self._p1, self._p2, self._p3, self._p4, self._p5
-        // );
+    fn encrypt(&self, m: Rational<T>) -> HenselCode<T> {
         let delta_max: T = self._p1.mul(&self._p2).mul(&self._p3).mul(&self._p5);
         let g: T = delta_max.mul(&self._p4);
         let s1 = T::random_mod(&self._p1);
@@ -126,7 +116,7 @@ impl<T: BigIntTrait> CryptographicParameters<T> {
         HenselCode::from((&g, &rational_term)) + dp4
     }
 
-    pub fn decrypt(&self, hc: HenselCode<T>) -> Rational<T> {
+    fn decrypt(&self, hc: HenselCode<T>) -> Rational<T> {
         let hc_p4 = new_hensel_code(&self._p4, &hc.res);
         let r_p4: Rational<T> = Rational::<T>::from(&hc_p4);
         Rational::<T>::from(&HenselCode::<T>::from((&self._p1, &r_p4)))
@@ -135,7 +125,7 @@ impl<T: BigIntTrait> CryptographicParameters<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::CryptographicParameters;
+    use super::{EncryptionScheme, PrivateKeySchemeCryptographicParameters};
     use crate::bigint::BigIntTrait;
     use crate::hensel_code;
 
@@ -151,13 +141,13 @@ mod tests {
             T::from_u128(13),
             T::from_u128(17),
         );
-        let crypto_param = CryptographicParameters::new(
-            p1.clone(),
-            p2.clone(),
-            p3.clone(),
-            p4.clone(),
-            p5.clone(),
-        );
+        let crypto_param = PrivateKeySchemeCryptographicParameters {
+            _p1: p1.clone(),
+            _p2: p2.clone(),
+            _p3: p3.clone(),
+            _p4: p4.clone(),
+            _p5: p5.clone(),
+        };
         let (n1, n2, n3) = (T::from_u128(38), T::from_u128(2), T::from_u128(1));
         let result = crypto_param.chinese_remainder(n1.clone(), n2.clone(), n3.clone());
 
