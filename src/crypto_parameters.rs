@@ -131,13 +131,14 @@ pub struct PublicKeySchemeCryptographicParameters<T: BigIntTrait> {
     _p2: T,
     _p3: T,
     _p4: T,
+    lambda: u32,
     g: T,
     g_prime: T,
     e: HenselCode<T>,
 }
 
 impl<T: BigIntTrait> PublicKeySchemeCryptographicParameters<T> {
-    pub fn new(_p1: T, _p2: T, _p3: T, _p4: T, e: HenselCode<T>) -> Self {
+    pub fn new(_p1: T, _p2: T, _p3: T, _p4: T, lambda: u32, e: HenselCode<T>) -> Self {
         let g = _p1.mul(&_p2.mul(&_p3.mul(&_p4)));
         let g_prime = _p3.mul(&_p4);
         Self {
@@ -183,13 +184,26 @@ impl<T: BigIntTrait> PublicKeySchemeCryptographicParameters<T> {
             primes[1].clone(),
             primes[2].clone(),
             primes[3].clone(),
+            lambda,
             e,
         )
     }
 }
 
 impl<T: BigIntTrait> EncryptionScheme<T> for PublicKeySchemeCryptographicParameters<T> {
-    fn encrypt(&self, m: Rational<T>) -> HenselCode<T> {}
+    fn encrypt(&self, m: Rational<T>) -> HenselCode<T> {
+        let s1: T = T::random_mod(&T::from_u128(2).pow((self.lambda - 1) as u128));
+        let s2: T = T::random_mod(&T::from_u128(2).pow((self.lambda - 1) as u128));
+        let p12 = self._p1.mul(&self._p2);
+        let delta: T = T::random_mod(&p12.mul(&self._p4).sub(&p12)).add(&p12);
+        let hc_prime_res = (new_hensel_code(&self.g_prime, &s1.mul(&self.e.res))
+            + HenselCode::from((&self.g_prime, &m)))
+        .res;
+        let encrypted_res = hc_prime_res
+            .add(&s2.mul(&self.g_prime))
+            .add(&delta.mul(&self.g.pow(2)));
+        new_hensel_code(&self.g, &encrypted_res)
+    }
 
     fn decrypt(&self, hc: HenselCode<T>) -> Rational<T> {
         let hc_p3 = new_hensel_code(&self._p3, &hc.res);
