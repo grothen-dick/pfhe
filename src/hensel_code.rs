@@ -101,6 +101,7 @@ impl<'a, 'b, T: BigIntTrait> Mul<&'b HenselCode<T>> for &'a HenselCode<T> {
 pub fn chinese_remainder<T: BigIntTrait>(hc1: HenselCode<T>, hc2: HenselCode<T>) -> HenselCode<T> {
     let (g1, n1) = (hc1.modulus, hc1.res);
     let (g2, n2) = (hc2.modulus, hc2.res);
+    // println!("\ng1: {g1}, g2: {g2}, gcd: {}", g1.gcd(&g2));
     assert!(PartialEq::eq(&g1.gcd(&g2), &T::from_u128(1)));
     let g12 = g1.mul(&g2);
     let (g1_mod_g2, g2_mod_g1) = (

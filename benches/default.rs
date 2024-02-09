@@ -20,12 +20,12 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         b.iter(|| HenselCode::from(black_box((&p, &r))))
     });
 
-    const L1: usize = 40;
+    const L1: usize = 170;
     type T1 = WrappingCryptoBigInt<L1>;
 
     println!("generating crypto params ...");
     let now = Instant::now();
-    let crypto_params = CryptographicParameters::<T1>::from_params(4, 3);
+    let crypto_params = CryptographicParameters::<T1>::from_params(8, 3);
     println!("crypto params generated in {:.2?}", now.elapsed());
 
     let message: Rational<T1> = Rational {

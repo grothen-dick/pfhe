@@ -30,17 +30,33 @@ impl<T: BigIntTrait> CryptographicParameters<T> {
         }
     }
 
+    /// generates 5 distincts primes from security parameters `lambda, d`
     pub fn from_params(lambda: u32, d: u32) -> CryptographicParameters<T> {
         let rho = lambda;
         let eta = 2 * (d + 2) * lambda;
         let gamma: u32 = (lambda / lambda.ilog2()) * (eta - rho).pow(2);
         let mu = gamma - eta - 2 * lambda;
+        let mut primes: Vec<T> = Vec::new();
+        for size in [(rho + 1), (rho / 2), (rho / 2), eta, mu] {
+            loop {
+                let current_p = T::generate_prime(Some(size as usize));
+                // println!("{current_p}");
+                // for p in &primes {
+                //     print!("{p}, ");
+                // }
+                // println!("");
+                if !primes.contains(&current_p) {
+                    primes.push(current_p);
+                    break;
+                }
+            }
+        }
         CryptographicParameters::<T> {
-            _p1: T::generate_prime(Some((rho + 1) as usize)),
-            _p2: T::generate_prime(Some((rho / 2) as usize)),
-            _p3: T::generate_prime(Some((rho / 2) as usize)),
-            _p4: T::generate_prime(Some(eta as usize)),
-            _p5: T::generate_prime(Some(mu as usize)),
+            _p1: primes[0].clone(),
+            _p2: primes[1].clone(),
+            _p3: primes[2].clone(),
+            _p4: primes[3].clone(),
+            _p5: primes[4].clone(),
         }
     }
 
@@ -62,6 +78,10 @@ impl<T: BigIntTrait> CryptographicParameters<T> {
     }
 
     pub fn encrypt(&self, m: Rational<T>) -> HenselCode<T> {
+        // println!(
+        //     "p1: {}, p2: {}, p3: {}, p4: {}, p5: {}",
+        //     self._p1, self._p2, self._p3, self._p4, self._p5
+        // );
         let delta_max: T = self._p1.mul(&self._p2).mul(&self._p3).mul(&self._p5);
         let g: T = delta_max.mul(&self._p4);
         let s1 = T::random_mod(&self._p1);
