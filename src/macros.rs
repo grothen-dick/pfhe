@@ -37,3 +37,20 @@ macro_rules! impl_divlike_op {
 
     };
 }
+
+#[macro_export]
+macro_rules! big_int_blanket_impl {
+    ($(($trait: ident, $function: ident)),+ ) => {
+        $(
+            impl<T> $trait<T> for BigInt<T>
+            where
+              T: BigIntTrait,
+            {
+                type Output = T;
+                fn $function(self, other: T) -> T {
+                    self.$function(other)
+                }
+            }
+        )+
+    };
+}

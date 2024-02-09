@@ -3,160 +3,173 @@ use super::{
     ops::{Add, Mul},
     rational::Rational,
 };
-use crate::bigint::BigInt;
-use crate::shared::{Bounded, DEFAULT_LIMBS};
+use crate::bigint::BigIntTrait;
 
-use crypto_bigint::modular::runtime_mod::{DynResidue, DynResidueParams};
-
-// the operation `chinese_remainder` changes the size of the modulus, so we need to track it using a const generics LIMBS
 #[derive(Clone, Debug)]
-pub struct HenselCode<const L: usize = DEFAULT_LIMBS> {
-    params: DynResidueParams<L>,
-    res: DynResidue<L>, // internal variable that stores the residue
+pub struct HenselCode<T: BigIntTrait> {
+    pub modulus: T,
+    pub res: T, // internal variable that stores the residue
 }
-impl<const L: usize> HenselCode<L> {
-    /// Returns a BigInt n, with residue `res` mod `params.modulus()`
-    pub fn to_bigint(&self) -> BigInt<L> {
-        BigInt::new(self.res.retrieve())
+impl<T: BigIntTrait> HenselCode<T> {
+    pub fn generate_zero(modulus: &T) -> HenselCode<T> {
+        HenselCode {
+            modulus: modulus.clone(),
+            res: T::from_u128(0),
+        }
     }
-
-    /// Returns the modulus
-    pub fn modulus(&self) -> BigInt<L> {
-        BigInt::new(*self.params.modulus())
-    }
-
-    pub fn generate_zero(modulus: &BigInt<L>) -> HenselCode<L> {
-        let params = DynResidueParams::new(&modulus.to_uint());
-        let zero = DynResidue::new(&BigInt::<L>::from(0).to_uint(), params);
-        HenselCode { params, res: zero }
-    }
-}
-
-impl<const L: usize> Bounded for HenselCode<L> {
-    const L: usize = L;
 }
 
 /// Creates an HenselCode from two BigInt
-pub fn new_hensel_code<const LG: usize, const LN: usize>(
-    g: &BigInt<LG>,
-    n: &BigInt<LN>,
-) -> HenselCode<LG> {
-    let params = DynResidueParams::new(&g.to_uint());
-    let res = DynResidue::new(&(&n.resize::<LG>() % g).to_uint(), params);
-    HenselCode { params, res }
+pub fn new_hensel_code<T: BigIntTrait>(modulus: &T, n: &T) -> HenselCode<T> {
+    HenselCode {
+        modulus: modulus.clone(),
+        res: n.rem(modulus),
+    }
 }
 
-impl<const L: usize> HenselCode<L> {
-    pub fn invert(&self) -> HenselCode<L> {
-        HenselCode {
-            params: self.params,
-            res: self.res.invert().0,
+impl<T: BigIntTrait> HenselCode<T> {
+    pub fn invert(&self) -> HenselCode<T> {
+        let g = self.modulus.clone();
+        let (mut x0, mut x1) = (self.modulus.clone(), self.res.clone());
+        let (mut z0, mut z1) = (T::from_u128(0), T::from_u128(1));
+        while x1.is_zero().unwrap_u8() == 0 {
+            let integer_div = x0.div(&x1);
+            (x0, x1) = (x1.clone(), x0.sub(&integer_div.mul(&x1)));
+            (z0, z1) = (
+                z1.clone(),
+                (z0.add(&g).sub(&integer_div.mul(&z1).rem(&g))).rem(&g),
+            );
+        }
+        // we have:
+        // x0 = gcd(modulus, res) = z0 * res % modulus
+        // x1 = 0
+        if x0 != T::from_u128(1) {
+            HenselCode {
+                modulus: self.modulus.clone(),
+                res: T::from_u128(0),
+            }
+        } else {
+            HenselCode {
+                modulus: self.modulus.clone(),
+                res: z0,
+            }
         }
     }
 }
 /// Adds two HenselCodes
-impl<const L: usize> Add<HenselCode<L>> for HenselCode<L> {
-    type Output = HenselCode<L>;
-    fn add(self, other: HenselCode<L>) -> HenselCode<L> {
+impl<T: BigIntTrait> Add<HenselCode<T>> for HenselCode<T> {
+    type Output = HenselCode<T>;
+    fn add(self, other: HenselCode<T>) -> HenselCode<T> {
         &self + &other
     }
 }
 /// Multiplies two HenselCodes
-impl<const L: usize> Mul<HenselCode<L>> for HenselCode<L> {
-    type Output = HenselCode<L>;
-    fn mul(self, other: HenselCode<L>) -> HenselCode<L> {
+impl<T: BigIntTrait> Mul<HenselCode<T>> for HenselCode<T> {
+    type Output = HenselCode<T>;
+    fn mul(self, other: HenselCode<T>) -> HenselCode<T> {
         &self * &other
     }
 }
 
 /// Adds two &HenselCodes
-impl<'a, 'b, const L: usize> Add<&'b HenselCode<L>> for &'a HenselCode<L> {
-    type Output = HenselCode<L>;
-    fn add(self, other: &'b HenselCode<L>) -> HenselCode<L> {
-        if self.modulus() != other.modulus() {
+impl<'a, 'b, T: BigIntTrait> Add<&'b HenselCode<T>> for &'a HenselCode<T> {
+    type Output = HenselCode<T>;
+    fn add(self, other: &'b HenselCode<T>) -> HenselCode<T> {
+        if self.modulus != other.modulus {
             panic!("cannot add '{}' and '{}'", self, other);
         }
         HenselCode {
-            params: self.params,
-            res: self.res + other.res,
+            modulus: self.modulus.clone(),
+            res: self.res.add(&other.res).rem(&self.modulus),
         }
     }
 }
 /// Multiplies two &HenselCodes
-impl<'a, 'b, const L: usize> Mul<&'b HenselCode<L>> for &'a HenselCode<L> {
-    type Output = HenselCode<L>;
-    fn mul(self, other: &'b HenselCode<L>) -> HenselCode<L> {
-        if self.modulus() != other.modulus() {
+impl<'a, 'b, T: BigIntTrait> Mul<&'b HenselCode<T>> for &'a HenselCode<T> {
+    type Output = HenselCode<T>;
+    fn mul(self, other: &'b HenselCode<T>) -> HenselCode<T> {
+        if self.modulus != other.modulus {
             panic!("cannot add '{}' and '{}'", self, other);
         }
         HenselCode {
-            params: self.params,
-            res: self.res * other.res,
+            modulus: self.modulus.clone(),
+            res: self.res.mul(&other.res).rem(&self.modulus),
         }
     }
 }
 
-pub fn chinese_remainder<const L: usize>(hc1: HenselCode<L>, hc2: HenselCode<L>) -> HenselCode<L> {
-    let (g1, n1) = (hc1.modulus(), hc1.to_bigint());
-    let (g2, n2) = (hc2.modulus(), hc2.to_bigint());
-    let g12 = hc1.modulus() * hc2.modulus();
-    let (residue_params1, residue_params2, residue_params) = (
-        DynResidueParams::new(&g1.to_uint()),
-        DynResidueParams::new(&g2.to_uint()),
-        DynResidueParams::new(&g12.to_uint()),
-    );
-    let (mut res_g1, mut res_g2) = (
-        DynResidue::new(&g1.to_uint(), residue_params2),
-        DynResidue::new(&g2.to_uint(), residue_params1),
+pub fn chinese_remainder<T: BigIntTrait>(hc1: HenselCode<T>, hc2: HenselCode<T>) -> HenselCode<T> {
+    let (g1, n1) = (hc1.modulus, hc1.res);
+    let (g2, n2) = (hc2.modulus, hc2.res);
+    assert!(PartialEq::eq(&g1.gcd(&g2), &T::from_u128(1)));
+    let g12 = g1.mul(&g2);
+    let (g1_mod_g2, g2_mod_g1) = (
+        HenselCode {
+            modulus: g2.clone(),
+            res: g1.clone(),
+        },
+        HenselCode {
+            modulus: g1.clone(),
+            res: g2.clone(),
+        },
     );
     // i1*g1 = 1 (mod g2), i2*g2 = 1 (mod g1)
-    // we need to convert i1 and i2 to a residue mod g1*g2
-    let (i1, i2) = (
-        DynResidue::new(&res_g1.invert().0.retrieve(), residue_params),
-        DynResidue::new(&res_g2.invert().0.retrieve(), residue_params),
-    );
+    let (i1, i2) = (g1_mod_g2.invert().res, g2_mod_g1.invert().res);
 
-    // change modulus g1 -> g1*g2 and g2 -> g1*g2
-    (res_g1, res_g2) = (
-        DynResidue::new(&g1.to_uint(), residue_params),
-        DynResidue::new(&g2.to_uint(), residue_params),
-    );
-
-    let (res_n1, res_n2) = (
-        DynResidue::new(&n1.to_uint(), residue_params),
-        DynResidue::new(&n2.to_uint(), residue_params),
-    );
-
-    let res = res_g1 * i1 * res_n2 + res_g2 * i2 * res_n1;
-
-    HenselCode {
-        params: residue_params,
-        res,
-    }
+    new_hensel_code(&g12, &g1.mul(&i1).mul(&n2).add(&g2.mul(&i2).mul(&n1)))
 }
 
 /// Pretty-prints HenselCode
-impl<const L: usize> fmt::Display for HenselCode<L> {
+impl<T: BigIntTrait> fmt::Display for HenselCode<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} (mod {})", self.to_bigint(), self.modulus())
+        write!(f, "{} (mod {})", self.res, self.modulus)
     }
 }
 
 /// Given a prime `p` and a rational `r = num/denom`, where p does not divide denom,
 /// returns `r (mod p)`
-impl<const L: usize> From<(&BigInt<L>, &Rational<L>)> for HenselCode<L> {
-    fn from(params: (&BigInt<L>, &Rational<L>)) -> Self {
+impl<T: BigIntTrait> From<(&T, &Rational<T>)> for HenselCode<T> {
+    fn from(params: (&T, &Rational<T>)) -> Self {
         let (g, r) = params;
 
-        let params = DynResidueParams::new(&g.to_uint());
-        let denom = DynResidue::<L>::new(&r.denom.to_uint(), params);
-        let num = DynResidue::<L>::new(&r.num.to_uint(), params);
+        let denom = new_hensel_code(g, &r.denom);
+        let num = new_hensel_code(g, &r.num);
 
-        if BigInt::<L>::gcd(g, &r.denom) > BigInt::<L>::from(1) {
-            return Self::generate_zero(g);
+        if PartialEq::ne(&g.gcd(&r.denom), &T::from_u128(1)) {
+            Self::generate_zero(&g)
+        } else {
+            num * (denom.invert())
         }
-        let (id, _) = denom.invert();
-        let res = id * num;
-        HenselCode { params, res }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bigint::BigIntTrait;
+
+    type T = crate::bigint::WrappingCryptoBigInt;
+
+    #[test]
+    fn invert_hensel_code() {
+        let _from_u128 = <T as BigIntTrait>::from_u128;
+        let (p1, _p2, _p3) = (T::from_u128(4919), T::from_u128(7), T::from_u128(11));
+        let (n1, _n2, _n3) = (T::from_u128(38), T::from_u128(2), T::from_u128(1));
+
+        let hc1 = new_hensel_code(&p1, &n1);
+
+        assert_eq!(hc1.res.mul(&hc1.invert().res).rem(&p1), T::from_u128(1));
+    }
+
+    #[test]
+    fn chinese_remainder() {
+        let (p1, p2) = (T::from_u128(4919), T::from_u128(7));
+        let (n1, n2) = (
+            new_hensel_code(&p1, &T::from_u128(38)),
+            new_hensel_code(&p2, &T::from_u128(2)),
+        );
+        let result = super::chinese_remainder(n1.clone(), n2.clone());
+        assert_eq!((result.res.rem(&T::from_u128(4919))), n1.res.clone());
+        assert_eq!((result.res.rem(&T::from_u128(7))), n2.res.clone());
     }
 }
