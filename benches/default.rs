@@ -1,17 +1,19 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use pfhe::{
-    bigint::BigInt, crypto_parameters::CryptographicParameters, hensel_code::HenselCode,
-    rational::Rational, shared::DEFAULT_LIMBS,
+    bigint::{BigIntTrait, WrappingCryptoBigInt},
+    crypto_parameters::CryptographicParameters,
+    hensel_code::HenselCode,
+    rational::Rational,
 };
 use std::time::Instant;
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-    const L: usize = DEFAULT_LIMBS;
-    let p: BigInt<L> = BigInt::<L>::from(7919 as u128); // thanks wikipedia for this prime
+    type T = WrappingCryptoBigInt;
+    let p = T::from_u128(7919); // thanks wikipedia for this prime
 
-    let r = Rational::<L> {
-        num: BigInt::<L>::from(6 as u128),
-        denom: BigInt::<L>::from(1 as u128),
+    let r = Rational::<T> {
+        num: T::from_u128(6),
+        denom: T::from_u128(1),
     };
 
     c.bench_function("encode rational to hensel code", |b| {
@@ -19,15 +21,16 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     });
 
     const L1: usize = 40;
+    type T1 = WrappingCryptoBigInt<L1>;
 
     println!("generating crypto params ...");
     let now = Instant::now();
-    let crypto_params = CryptographicParameters::<L1>::from_params(4, 3);
+    let crypto_params = CryptographicParameters::<T1>::from_params(4, 3);
     println!("crypto params generated in {:.2?}", now.elapsed());
 
-    let message: Rational<L1> = Rational {
-        num: BigInt::<L1>::from(43),
-        denom: BigInt::<L1>::from(44),
+    let message: Rational<T1> = Rational {
+        num: T1::from_u128(43),
+        denom: T1::from_u128(44),
     };
 
     c.bench_function("encrypt rational using large prime number", |b| {

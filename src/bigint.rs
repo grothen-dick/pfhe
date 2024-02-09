@@ -1,9 +1,13 @@
 use crate::shared::DEFAULT_LIMBS;
+
 use crypto_bigint::{
     rand_core::OsRng,
     subtle::{Choice, ConditionallySelectable, ConstantTimeEq, ConstantTimeLess},
     Checked, NonZero, RandomMod, Uint, Wrapping, Zero,
 };
+
+use crypto_primes::generate_prime as crypto_primes_generate;
+
 use std::{clone::Clone, convert::From, fmt};
 
 /// A trait that define a big int interface. We need to do basic arithmetic operations with them,
@@ -20,6 +24,7 @@ pub trait BigIntTrait: PartialEq + PartialOrd + Clone + fmt::Display {
     fn random_mod(modulus: &Self) -> Self;
     fn from_u128(n: u128) -> Self;
     fn is_zero<'a>(&'a self) -> Choice;
+    fn generate_prime(bit_length: Option<usize>) -> Self;
 }
 
 #[derive(PartialEq, PartialOrd, Clone, Debug)]
@@ -118,6 +123,9 @@ impl<const L: usize> BigIntTrait for WrappingCryptoBigInt<L> {
     fn is_zero<'a>(&'a self) -> Choice {
         self.0.is_zero()
     }
+    fn generate_prime(bit_length: Option<usize>) -> Self {
+        WrappingCryptoBigInt(Wrapping(crypto_primes_generate::<L>(bit_length)))
+    }
 }
 
 impl<const L: usize> BigIntTrait for CheckedCryptoBigInt<L> {
@@ -171,6 +179,9 @@ impl<const L: usize> BigIntTrait for CheckedCryptoBigInt<L> {
     }
     fn is_zero<'a>(&'a self) -> Choice {
         self.0.ct_eq(&Self::from_u128(0).0)
+    }
+    fn generate_prime(bit_length: Option<usize>) -> Self {
+        CheckedCryptoBigInt(Checked::new(crypto_primes_generate::<L>(bit_length)))
     }
 }
 

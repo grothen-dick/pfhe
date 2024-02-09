@@ -6,7 +6,6 @@ use crate::{
     rational::Rational,
 };
 
-use crypto_primes::generate_prime;
 use std::convert::From;
 
 /// This is a private key, with five private parameters.
@@ -31,17 +30,17 @@ impl<T: BigIntTrait> CryptographicParameters<T> {
         }
     }
 
-    pub fn from_params(lambda: u32, d: u32) -> CryptographicParameters<L> {
+    pub fn from_params(lambda: u32, d: u32) -> CryptographicParameters<T> {
         let rho = lambda;
         let eta = 2 * (d + 2) * lambda;
         let gamma: u32 = (lambda / lambda.ilog2()) * (eta - rho).pow(2);
         let mu = gamma - eta - 2 * lambda;
-        CryptographicParameters::<L> {
-            _p1: BigInt::new(generate_prime(Some(((rho + 1) as u16).into()))),
-            _p2: BigInt::new(generate_prime(Some(((rho / 2) as u16).into()))),
-            _p3: BigInt::new(generate_prime(Some(((rho / 2) as u16).into()))),
-            _p4: BigInt::new(generate_prime(Some((eta as u16).into()))),
-            _p5: BigInt::new(generate_prime(Some((mu as u16).into()))),
+        CryptographicParameters::<T> {
+            _p1: T::generate_prime(Some((rho + 1) as usize)),
+            _p2: T::generate_prime(Some((rho / 2) as usize)),
+            _p3: T::generate_prime(Some((rho / 2) as usize)),
+            _p4: T::generate_prime(Some(eta as usize)),
+            _p5: T::generate_prime(Some(mu as usize)),
         }
     }
 
