@@ -14,16 +14,16 @@ use std::{clone::Clone, convert::From, fmt};
 /// computing greater common divisor, square root, generate a random int mod `modulus`, cast a u128
 /// into a big int.
 pub trait BigIntTrait: PartialEq + PartialOrd + Clone + fmt::Display {
-    fn add<'a, 'b>(&'a self, other: &'b Self) -> Self;
-    fn sub<'a, 'b>(&'a self, other: &'b Self) -> Self;
-    fn mul<'a, 'b>(&'a self, other: &'b Self) -> Self;
-    fn div<'a, 'b>(&'a self, other: &'b Self) -> Self;
-    fn rem<'a, 'b>(&'a self, other: &'b Self) -> Self;
-    fn gcd<'a, 'b>(&'a self, other: &'b Self) -> Self;
-    fn sqrt<'a>(&'a self) -> Self;
+    fn add(&self, other: &Self) -> Self;
+    fn sub(&self, other: &Self) -> Self;
+    fn mul(&self, other: &Self) -> Self;
+    fn div(&self, other: &Self) -> Self;
+    fn rem(&self, other: &Self) -> Self;
+    fn gcd(&self, other: &Self) -> Self;
+    fn sqrt(&self) -> Self;
     fn random_mod(modulus: &Self) -> Self;
     fn from_u128(n: u128) -> Self;
-    fn is_zero<'a>(&'a self) -> Choice;
+    fn is_zero(&self) -> Choice;
     fn generate_prime(bit_length: Option<usize>) -> Self;
 }
 
@@ -60,10 +60,8 @@ impl<const L: usize> std::cmp::PartialEq for CheckedCryptoBigInt<L> {
             (self.0 .0.is_some().into(), other.0 .0.is_some().into());
         if self_is_some && other_is_some {
             self.0 .0.unwrap() == other.0 .0.unwrap()
-        } else if !self_is_some && !other_is_some {
-            true
         } else {
-            false
+            !self_is_some && !other_is_some
         }
     }
 }
@@ -82,23 +80,23 @@ impl<const L: usize> std::cmp::PartialOrd for CheckedCryptoBigInt<L> {
 }
 
 impl<const L: usize> BigIntTrait for WrappingCryptoBigInt<L> {
-    fn add<'a, 'b>(&'a self, other: &'b Self) -> Self {
+    fn add(&self, other: &Self) -> Self {
         Self(self.0 + other.0)
     }
-    fn sub<'a, 'b>(&'a self, other: &'b Self) -> Self {
+    fn sub(&self, other: &Self) -> Self {
         Self(self.0 - other.0)
     }
-    fn mul<'a, 'b>(&'a self, other: &'b Self) -> Self {
+    fn mul(&self, other: &Self) -> Self {
         Self(self.0 * other.0)
     }
-    fn div<'a, 'b>(&'a self, other: &'b Self) -> Self {
+    fn div(&self, other: &Self) -> Self {
         Self(self.0 / NonZero::new(other.0 .0).unwrap())
     }
-    fn rem<'a, 'b>(&'a self, other: &'b Self) -> Self {
+    fn rem(&self, other: &Self) -> Self {
         Self(self.0 % NonZero::new(other.0 .0).unwrap())
     }
     /// Computes gcd of two &BigInt, the good-old Euclid way
-    fn gcd<'a, 'b>(&'a self, other: &'b Self) -> Self {
+    fn gcd(&self, other: &Self) -> Self {
         if self < other {
             return other.gcd(self);
         }
@@ -108,7 +106,7 @@ impl<const L: usize> BigIntTrait for WrappingCryptoBigInt<L> {
         }
         x0
     }
-    fn sqrt<'a>(&'a self) -> Self {
+    fn sqrt(&self) -> Self {
         Self(Wrapping::<Uint<L>>(self.0 .0.sqrt_vartime()))
     }
     fn random_mod(modulus: &Self) -> Self {
@@ -120,7 +118,7 @@ impl<const L: usize> BigIntTrait for WrappingCryptoBigInt<L> {
     fn from_u128(n: u128) -> Self {
         Self(Wrapping::<Uint<L>>(Uint::<L>::from(n)))
     }
-    fn is_zero<'a>(&'a self) -> Choice {
+    fn is_zero(&self) -> Choice {
         self.0.is_zero()
     }
     fn generate_prime(bit_length: Option<usize>) -> Self {
@@ -129,23 +127,23 @@ impl<const L: usize> BigIntTrait for WrappingCryptoBigInt<L> {
 }
 
 impl<const L: usize> BigIntTrait for CheckedCryptoBigInt<L> {
-    fn add<'a, 'b>(&'a self, other: &'b Self) -> Self {
+    fn add(&self, other: &Self) -> Self {
         Self(self.0 + other.0)
     }
-    fn sub<'a, 'b>(&'a self, other: &'b Self) -> Self {
+    fn sub(&self, other: &Self) -> Self {
         Self(self.0 - other.0)
     }
-    fn mul<'a, 'b>(&'a self, other: &'b Self) -> Self {
+    fn mul(&self, other: &Self) -> Self {
         Self(self.0 * other.0)
     }
-    fn div<'a, 'b>(&'a self, other: &'b Self) -> Self {
+    fn div(&self, other: &Self) -> Self {
         Self(Checked(
             self.0
                  .0
                 .and_then(|n| other.0 .0.and_then(|m| n.checked_div(&m))),
         ))
     }
-    fn rem<'a, 'b>(&'a self, other: &'b Self) -> Self {
+    fn rem(&self, other: &Self) -> Self {
         Self(Checked(
             self.0
                  .0
@@ -153,7 +151,7 @@ impl<const L: usize> BigIntTrait for CheckedCryptoBigInt<L> {
         ))
     }
     /// Computes gcd of two &BigInt, the good-old Euclid way
-    fn gcd<'a, 'b>(&'a self, other: &'b Self) -> Self {
+    fn gcd(&self, other: &Self) -> Self {
         Self(Checked(self.0 .0.and_then(|n| {
             other.0 .0.map(|m| {
                 let is_n_lt_m = n.ct_lt(&m);
@@ -166,7 +164,7 @@ impl<const L: usize> BigIntTrait for CheckedCryptoBigInt<L> {
             })
         })))
     }
-    fn sqrt<'a>(&'a self) -> Self {
+    fn sqrt(&self) -> Self {
         Self(Checked::<Uint<L>>(self.0 .0.map(|x| x.sqrt_vartime())))
     }
     fn random_mod(modulus: &Self) -> Self {
@@ -177,7 +175,7 @@ impl<const L: usize> BigIntTrait for CheckedCryptoBigInt<L> {
     fn from_u128(n: u128) -> Self {
         Self(Checked::new(Uint::<L>::from(n)))
     }
-    fn is_zero<'a>(&'a self) -> Choice {
+    fn is_zero(&self) -> Choice {
         self.0.ct_eq(&Self::from_u128(0).0)
     }
     fn generate_prime(bit_length: Option<usize>) -> Self {

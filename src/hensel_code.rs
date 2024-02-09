@@ -11,9 +11,9 @@ pub struct HenselCode<T: BigIntTrait> {
     pub res: T, // internal variable that stores the residue
 }
 impl<T: BigIntTrait> HenselCode<T> {
-    pub fn generate_zero(modulus: &T) -> HenselCode<T> {
+    pub fn generate_zero(modulus: T) -> HenselCode<T> {
         HenselCode {
-            modulus: modulus.clone(),
+            modulus,
             res: T::from_u128(0),
         }
     }
@@ -137,7 +137,7 @@ impl<T: BigIntTrait> From<(&T, &Rational<T>)> for HenselCode<T> {
         let num = new_hensel_code(g, &r.num);
 
         if PartialEq::ne(&g.gcd(&r.denom), &T::from_u128(1)) {
-            Self::generate_zero(&g)
+            Self::generate_zero(g.clone())
         } else {
             num * (denom.invert())
         }
