@@ -191,7 +191,11 @@ impl<T: BigIntTrait> PublicKeySchemeCryptographicParameters<T> {
 impl<T: BigIntTrait> EncryptionScheme<T> for PublicKeySchemeCryptographicParameters<T> {
     fn encrypt(&self, m: Rational<T>) -> HenselCode<T> {}
 
-    fn decrypt(&self, hc: HenselCode<T>) -> Rational<T> {}
+    fn decrypt(&self, hc: HenselCode<T>) -> Rational<T> {
+        let hc_p3 = new_hensel_code(&self._p3, &hc.res);
+        let r_p3: Rational<T> = Rational::<T>::from(&hc_p3);
+        Rational::<T>::from(&HenselCode::<T>::from((&self._p1, &r_p3)))
+    }
 }
 
 #[cfg(test)]
