@@ -6,7 +6,7 @@ use crypto_bigint::{
     Checked, NonZero, RandomMod, Uint, Wrapping, Zero,
 };
 
-use std::ops::Add;
+
 
 use crypto_primes::generate_prime as crypto_primes_generate;
 
@@ -29,10 +29,10 @@ pub trait BigIntTrait: PartialEq + PartialOrd + Clone + fmt::Display + fmt::Debu
         while exponent > 1 {
             if exponent % 2 == 1 {
                 y = x.mul(&y);
-                exponent = exponent - 1;
+                exponent -= 1;
             }
             x = x.mul(&x);
-            exponent = exponent / 2;
+            exponent /= 2;
         }
         x.mul(&y)
     }

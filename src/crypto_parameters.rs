@@ -77,7 +77,7 @@ impl<T: BigIntTrait> EncryptionScheme<T> for PrivateKeySchemeCryptographicParame
         let s3 = T::random_mod(&self._p3);
         let delta = T::random_mod(&delta_max);
 
-        let dp4 = new_hensel_code(&g, &(delta.mul(&self._p4)));
+        let _dp4 = new_hensel_code(&g, &(delta.mul(&self._p4)));
 
         let hc_noise = self.chinese_remainder(T::zero(), s2.clone(), s3.clone());
         assert_eq!(hc_noise.res.rem(&self._p1), T::zero());
@@ -93,7 +93,7 @@ impl<T: BigIntTrait> EncryptionScheme<T> for PrivateKeySchemeCryptographicParame
         );
 
         // create a Rational from s1
-        let rs1 = Rational {
+        let _rs1 = Rational {
             num: s1,
             denom: T::one(),
         };
