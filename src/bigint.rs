@@ -6,8 +6,6 @@ use crypto_bigint::{
     Checked, NonZero, RandomMod, Uint, Wrapping, Zero,
 };
 
-use std::ops::Add;
-
 use crypto_primes::generate_prime as crypto_primes_generate;
 
 use std::{clone::Clone, convert::From, fmt};
@@ -20,13 +18,21 @@ pub trait BigIntTrait: PartialEq + PartialOrd + Clone + fmt::Display + fmt::Debu
     fn sub(&self, other: &Self) -> Self;
     fn mul(&self, other: &Self) -> Self;
     fn pow(&self, other: u128) -> Self {
-        if other == 0 {
-            Self::one()
-        } else if other % 2 == 1 {
-            (self.mul(&self)).pow(other / 2).mul(&self)
-        } else {
-            (self.mul(&self)).pow(other / 2)
+        let mut exponent = other;
+        if exponent == 0 {
+            return Self::one();
         }
+        let mut x = self.clone();
+        let mut y = Self::one();
+        while exponent > 1 {
+            if exponent % 2 == 1 {
+                y = x.mul(&y);
+                exponent -= 1;
+            }
+            x = x.mul(&x);
+            exponent /= 2;
+        }
+        x.mul(&y)
     }
     fn div(&self, other: &Self) -> Self;
     fn rem(&self, other: &Self) -> Self;
@@ -109,13 +115,6 @@ impl<const L: usize> BigIntTrait for WrappingCryptoBigInt<L> {
     }
     fn mul(&self, other: &Self) -> Self {
         Self(self.0 * other.0)
-    }
-    fn pow(&self, other: u128) -> Self {
-        let mut result: Self = Self::from_u128(1);
-        for _i in 0..(other) {
-            result = result.mul(&Self::from_u128(other));
-        }
-        result
     }
     fn div(&self, other: &Self) -> Self {
         Self(self.0 / NonZero::new(other.0 .0).unwrap())
@@ -231,5 +230,17 @@ mod tests {
 
         simple_tester(0, 1);
         simple_tester(129812, 92373829187);
+    }
+
+    #[test]
+    fn test_pow() {
+        fn simple_tester(a: u128, b: u128) {
+            let big_a = T::from_u128(a);
+            assert_eq!(big_a.pow(b), T::from_u128(a.pow(b as u32)));
+        }
+        simple_tester(12, 4);
+        simple_tester(3, 0);
+        simple_tester(12, 6);
+        simple_tester(12, 9);
     }
 }
