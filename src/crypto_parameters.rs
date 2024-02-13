@@ -180,22 +180,30 @@ impl<T: BigIntTrait> PublicKeySchemeCryptographicParameters<T> {
             primes[2].clone(),
             primes[3].clone(),
         );
+        println!("p1 {}", p1);
+        println!("p2 {}", p2);
+        println!("p3 {}", p3);
+        println!("p4' {}", p4prime);
+        println!("mu {}", mu);
+        println!("eta {}", eta);
         let p4 = p4prime.pow((f64::from(mu) / f64::from(eta + 1)).ceil() as u128);
+        println!("p4 {}", p4);
         let g = p1.mul(&p2.mul(&p3.mul(&p4)));
+        println!("g {}", g);
         let t = T::random_mod(&T::from_u128(2u128.pow(lambda - 1)));
-        let delta_e = T::random_mod(&T::from_u128(2u128.pow(gamma - eta)));
+        println!("t {}", t);
+        let delta_e = T::random_mod(&T::from_u128(2u128).pow((gamma - eta) as u128));
+        println!("delta_e {}", delta_e);
+
         let hc_noise =
             chinese_remainder(new_hensel_code(&p1, &T::zero()), new_hensel_code(&p2, &t));
+        println!("hc_noise {}", hc_noise);
         let hc_p3_res = HenselCode::<T>::from((&p3, &Rational::from(&hc_noise))).res;
+        println!("hc_p3_res {}", hc_p3_res);
         let e = new_hensel_code(&g, &hc_p3_res.add(&delta_e.mul(&p3)));
-        Self::new(
-            primes[0].clone(),
-            primes[1].clone(),
-            primes[2].clone(),
-            primes[3].clone(),
-            lambda,
-            e,
-        )
+        println!("e {}", e);
+
+        Self::new(p1, p2, p3, p4, lambda, e)
     }
 }
 
@@ -211,6 +219,7 @@ impl<T: BigIntTrait> EncryptionScheme<T> for PublicKeySchemeCryptographicParamet
         let encrypted_res = hc_prime_res
             .add(&s2.mul(&self.g_prime))
             .add(&delta.mul(&self.g.pow(2)));
+        println!("{}", new_hensel_code(&self.g, &encrypted_res));
         new_hensel_code(&self.g, &encrypted_res)
     }
 

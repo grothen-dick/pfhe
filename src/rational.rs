@@ -91,7 +91,7 @@ impl<T: BigIntTrait> From<&HenselCode<T>> for Rational<T> {
         }
         // perform (modified) extended euclidean algorithm on (g, n % g)
         let (mut y0, mut y1) = (T::zero(), T::one());
-        println!("n_max: {n_max}, x0: {x0}, x1: {x1}, y0: {y0}, y1: {y1}");
+        //        println!("n_max: {n_max}, x0: {x0}, x1: {x1}, y0: {y0}, y1: {y1}");
         while (x0 > n_max) && !<Choice as Into<bool>>::into(x1.is_zero()) {
             let q = x0.div(&x1);
             (x0, x1) = (x1.clone(), x0.sub(&q.mul(&x1)));
@@ -101,10 +101,10 @@ impl<T: BigIntTrait> From<&HenselCode<T>> for Rational<T> {
             //     ((y0 + g) - (q*y1 % g)) % g,
             // )
             (y0, y1) = (y1.clone(), (y0.add(&g).sub(&q.mul(&y1).rem(&g))).rem(&g));
-            println!("n_max: {n_max}, x0: {x0}, x1: {x1}, y0: {y0}, y1: {y1}");
+            //            println!("n_max: {n_max}, x0: {x0}, x1: {x1}, y0: {y0}, y1: {y1}");
         }
 
-        println!("result: {x0} / {y0}\n");
+        //      println!("result: {x0} / {y0}\n");
         Rational::<T> {
             num: x0,
             denom: y0.rem(&hc.modulus),
@@ -127,7 +127,7 @@ mod tests {
             let sum = r1 + r2;
             assert_eq!(sum.denom, (r1.denom.mul(&r2.denom)));
             assert_eq!(sum.num, r1.denom.mul(&r2.num).add(&r2.denom.mul(&r1.num)));
-            println!("{} + {} = {}", r1, r2, sum);
+            //            println!("{} + {} = {}", r1, r2, sum);
         }
         let from_u128 = <T as BigIntTrait>::from_u128;
 

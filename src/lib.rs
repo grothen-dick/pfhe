@@ -9,7 +9,12 @@ use std::{clone::Clone, fmt, ops};
 
 #[cfg(test)]
 mod tests {
-    use crate::crypto_parameters::{EncryptionScheme, PrivateKeySchemeCryptographicParameters};
+    use std::time::Instant;
+
+    use crate::crypto_parameters::{
+        EncryptionScheme, PrivateKeySchemeCryptographicParameters,
+        PublicKeySchemeCryptographicParameters,
+    };
 
     use super::bigint::{BigIntTrait, WrappingCryptoBigInt};
     use super::hensel_code::{new_hensel_code, HenselCode};
@@ -115,39 +120,57 @@ mod tests {
         assert_eq!(message, decrypted);
     }
 
-    // #[test]
-    // fn encrypt_add_decrypt() {
-    //     let (p1, p2, p3, p4, p5) = (
-    //         T::from_u128(7919),
-    //         T::from_u128(37),
-    //         T::from_u128(41),
-    //         T::from_u128(5897),
-    //         T::from_u128(7759),
-    //     );
-    //     let crypto_param = PrivateKeySchemeCryptographicParameters::new(
-    //         p1.clone(),
-    //         p2.clone(),
-    //         p3.clone(),
-    //         p4.clone(),
-    //         p5.clone(),
-    //     );
-    //     let r1 = Rational::<T> {
-    //         num: T::from_u128(37),
-    //         denom: T::from_u128(7),
-    //     };
-    //     let r2 = Rational::<T> {
-    //         num: T::from_u128(43),
-    //         denom: T::from_u128(7),
-    //     };
-    //     let r_sum = (&r1 + &r2).reduce();
-    //     println!("rational 1: {r1}");
-    //     println!("rational 2: {r2}");
-    //     let encrypted_1 = crypto_param.encrypt(r1);
-    //     let encrypted_2 = crypto_param.encrypt(r2);
-    //     println!("encrypted message 1: {encrypted_1}");
-    //     println!("encrypted message 2: {encrypted_2}");
-    //     let encrypted_sum = encrypted_1 + encrypted_2;
-    //     let sum = crypto_param.decrypt(encrypted_sum);
-    //     assert_eq!(sum, r_sum);
-    // }
+    #[test]
+    fn encrypt_add_decrypt() {
+        let (p1, p2, p3, p4, p5) = (
+            T::from_u128(7919),
+            T::from_u128(37),
+            T::from_u128(41),
+            T::from_u128(5897),
+            T::from_u128(7759),
+        );
+        let crypto_param = PrivateKeySchemeCryptographicParameters::new(
+            p1.clone(),
+            p2.clone(),
+            p3.clone(),
+            p4.clone(),
+            p5.clone(),
+        );
+        let r1 = Rational::<T> {
+            num: T::from_u128(37),
+            denom: T::from_u128(7),
+        };
+        let r2 = Rational::<T> {
+            num: T::from_u128(43),
+            denom: T::from_u128(7),
+        };
+        let r_sum = (&r1 + &r2).reduce();
+        println!("rational 1: {r1}");
+        println!("rational 2: {r2}");
+        let encrypted_1 = crypto_param.encrypt(r1);
+        let encrypted_2 = crypto_param.encrypt(r2);
+        println!("encrypted message 1: {encrypted_1}");
+        println!("encrypted message 2: {encrypted_2}");
+        let encrypted_sum = encrypted_1 + encrypted_2;
+        let sum = crypto_param.decrypt(encrypted_sum);
+        assert_eq!(sum, r_sum);
+    }
+
+    #[test]
+    fn encrypt_decrypt_public() {
+        type T1 = WrappingCryptoBigInt<20>;
+        println!("generating crypto params ...");
+        let now = Instant::now();
+        let crypto_params = PublicKeySchemeCryptographicParameters::new_from_params(4, 2);
+        println!("crypto params generated in {:.2?}", now.elapsed());
+        let message: Rational<T1> = Rational {
+            num: T1::from_u128(5),
+            denom: T1::from_u128(1),
+        };
+        println!("message: {}", message);
+        let ciphertext = crypto_params.encrypt(message.clone());
+        println!("ciphertext: {}", ciphertext);
+        let decrypted = crypto_params.decrypt(ciphertext);
+        assert_eq!(message, decrypted);
+    }
 }
