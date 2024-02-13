@@ -20,7 +20,6 @@ pub struct PrivateKeySchemeCryptographicParameters<T: BigIntTrait> {
 }
 
 pub trait EncryptionScheme<T: BigIntTrait> {
-    fn chinese_remainder(&self, n1: T, n2: T, n3: T) -> HenselCode<T>;
     fn encrypt(&self, m: Rational<T>) -> HenselCode<T>;
     fn decrypt(&self, hc: HenselCode<T>) -> Rational<T>;
 }
@@ -60,9 +59,7 @@ impl<T: BigIntTrait> PrivateKeySchemeCryptographicParameters<T> {
             primes[4].clone(),
         )
     }
-}
 
-impl<T: BigIntTrait> EncryptionScheme<T> for PrivateKeySchemeCryptographicParameters<T> {
     /// returns a number `n` such that `n = n1 (mod p1)`, `n = n2 (mod p2)`, `n = n3 (mod p3)`
     fn chinese_remainder(&self, n1: T, n2: T, n3: T) -> HenselCode<T> {
         let hc1 = new_hensel_code(&self._p1, &n1);
@@ -70,7 +67,9 @@ impl<T: BigIntTrait> EncryptionScheme<T> for PrivateKeySchemeCryptographicParame
         let hc3 = new_hensel_code(&self._p3, &n3);
         chinese_remainder(chinese_remainder(hc1, hc2), hc3)
     }
+}
 
+impl<T: BigIntTrait> EncryptionScheme<T> for PrivateKeySchemeCryptographicParameters<T> {
     fn encrypt(&self, m: Rational<T>) -> HenselCode<T> {
         let delta_max: T = self._p1.mul(&self._p2).mul(&self._p3).mul(&self._p5);
         let g: T = delta_max.mul(&self._p4);
@@ -146,6 +145,7 @@ impl<T: BigIntTrait> PublicKeySchemeCryptographicParameters<T> {
             _p2,
             _p3,
             _p4,
+            lambda,
             g,
             g_prime,
             e,
@@ -168,7 +168,9 @@ impl<T: BigIntTrait> PublicKeySchemeCryptographicParameters<T> {
                 }
             }
         }
-        let [p1, p2, p3, p4prime] = &primes[..];
+        let [p1, p2, p3, p4prime] = &primes[..] else {
+            todo!()
+        };
         let p4 = p4prime.pow((f64::from(mu) / f64::from(eta + 1)).ceil() as u128);
         let g = p1.mul(&p2.mul(&p3.mul(&p4)));
         let t = T::random_mod(&T::from_u128(2u128.pow(lambda - 1)));
@@ -178,7 +180,7 @@ impl<T: BigIntTrait> PublicKeySchemeCryptographicParameters<T> {
             new_hensel_code(p2, &t),
         );
         let hc_p3_res = HenselCode::<T>::from((p3, &Rational::from(&hc_noise))).res;
-        let e = new_hensel_code(&g, &hc_p3_res.add(&delta_e.mul(&p3)));
+        let e = new_hensel_code(&g, &hc_p3_res.add(&delta_e.mul(p3)));
         Self::new(
             primes[0].clone(),
             primes[1].clone(),
@@ -214,7 +216,7 @@ impl<T: BigIntTrait> EncryptionScheme<T> for PublicKeySchemeCryptographicParamet
 
 #[cfg(test)]
 mod tests {
-    use super::{EncryptionScheme, PrivateKeySchemeCryptographicParameters};
+    use super::PrivateKeySchemeCryptographicParameters;
     use crate::bigint::BigIntTrait;
     use crate::hensel_code;
 

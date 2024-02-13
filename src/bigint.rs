@@ -92,7 +92,7 @@ impl<const L: usize> BigIntTrait for WrappingCryptoBigInt<L> {
     }
     fn pow(&self, other: u128) -> Self {
         let mut result: Self = Self::from_u128(1);
-        for i in 0..(other) {
+        for _i in 0..(other) {
             result = result.mul(&Self::from_u128(other));
         }
         result
@@ -146,7 +146,7 @@ impl<const L: usize> BigIntTrait for CheckedCryptoBigInt<L> {
     }
     fn pow(&self, other: u128) -> Self {
         let mut result: Self = Self::from_u128(1);
-        for i in 0..(other) {
+        for _i in 0..(other) {
             result = result.mul(&Self::from_u128(other));
         }
         result
