@@ -20,21 +20,21 @@ pub trait BigIntTrait: PartialEq + PartialOrd + Clone + fmt::Display + fmt::Debu
     fn sub(&self, other: &Self) -> Self;
     fn mul(&self, other: &Self) -> Self;
     fn pow(&self, other: u128) -> Self {
-	let mut exponent = other;
-	if exponent == 0 {
-	    return Self::one();
-	}
-	let mut x = self.clone();
-	let mut y = Self::one();
-	while exponent > 1 {
-	    if exponent % 2 == 1 {
-		y = x.mul(&y);
-		exponent = exponent - 1;
-	    }
-	    x = x.mul(&x);
-	    exponent = exponent /2;
-	}
-	x.mul(&y)
+        let mut exponent = other;
+        if exponent == 0 {
+            return Self::one();
+        }
+        let mut x = self.clone();
+        let mut y = Self::one();
+        while exponent > 1 {
+            if exponent % 2 == 1 {
+                y = x.mul(&y);
+                exponent = exponent - 1;
+            }
+            x = x.mul(&x);
+            exponent = exponent / 2;
+        }
+        x.mul(&y)
     }
     fn div(&self, other: &Self) -> Self;
     fn rem(&self, other: &Self) -> Self;
@@ -236,13 +236,13 @@ mod tests {
 
     #[test]
     fn test_pow() {
-	fn simple_tester(a: u128, b: u128) {
-	    let big_a = T::from_u128(a);
-	    assert_eq!(big_a.pow(b), T::from_u128(a.pow(b as u32)));
-	}
-	simple_tester(12, 4);
-	simple_tester(3, 0);
-	simple_tester(12, 6);
-	simple_tester(12, 9);
+        fn simple_tester(a: u128, b: u128) {
+            let big_a = T::from_u128(a);
+            assert_eq!(big_a.pow(b), T::from_u128(a.pow(b as u32)));
+        }
+        simple_tester(12, 4);
+        simple_tester(3, 0);
+        simple_tester(12, 6);
+        simple_tester(12, 9);
     }
 }
