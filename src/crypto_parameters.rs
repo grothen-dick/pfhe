@@ -59,7 +59,6 @@ impl<T: BigIntTrait> PrivateKeySchemeCryptographicParameters<T> {
             primes[4].clone(),
         )
     }
-
     /// returns a number `n` such that `n = n1 (mod p1)`, `n = n2 (mod p2)`, `n = n3 (mod p3)`
     fn chinese_remainder(&self, n1: T, n2: T, n3: T) -> HenselCode<T> {
         let hc1 = new_hensel_code(&self._p1, &n1);
@@ -78,46 +77,53 @@ impl<T: BigIntTrait> EncryptionScheme<T> for PrivateKeySchemeCryptographicParame
         let s3 = T::random_mod(&self._p3);
         let delta = T::random_mod(&delta_max);
 
-        let dp4: HenselCode<T> = new_hensel_code(&g, &(delta.mul(&self._p4)));
-        let zero = T::from_u128(0);
-        let one = T::from_u128(1);
+        let dp4 = new_hensel_code(&g, &(delta.mul(&self._p4)));
 
-        // generate an encoding of zero
-        let hc_noise = self.chinese_remainder(zero, s2, s3);
-        // divide the result by p1 in order to get a correct HenselCode -> Rational conversion
-        let hc_noise_1 = HenselCode::<T>::from((
-            &(self._p1.mul(&self._p2).mul(&self._p3)),
-            &Rational::<T> {
-                num: hc_noise.res,
-                denom: self._p1.clone(),
-            },
-        ));
+        let hc_noise = self.chinese_remainder(T::zero(), s2.clone(), s3.clone());
+        assert_eq!(hc_noise.res.rem(&self._p1), T::zero());
+        assert_eq!(hc_noise.res.rem(&self._p2), s2);
+        assert_eq!(hc_noise.res.rem(&self._p3), s3);
 
         // convert to a Rational
-        let r_noise: Rational<T> = Rational::<T> {
-            num: self._p1.clone(),
-            denom: T::from_u128(1),
-        } * Rational::<T>::from(&hc_noise_1);
+        let r_noise = Rational::from(&hc_noise);
+        let p123 = self._p1.mul(&self._p2).mul(&self._p3);
+        assert_eq!(
+            r_noise.num.rem(&p123),
+            hc_noise.res.mul(&r_noise.denom).rem(&p123)
+        );
 
         // create a Rational from s1
         let rs1 = Rational {
             num: s1,
-            denom: one,
+            denom: T::one(),
         };
         // multiply rational encoding of zero by s1
-        let mut rational_term: Rational<T> = rs1 * r_noise;
+        // let mut rational_term: Rational<T> = rs1 * r_noise;
+        // DEBUG: enforce null noise
+        let mut rational_term: Rational<T> = Rational {
+            num: T::zero(),
+            denom: T::one(),
+        };
 
         // add the message `m` (a Rational by assumption)
         rational_term = rational_term + m;
+        rational_term = rational_term.reduce();
+        println!("rational term: {rational_term}");
 
         // convert to HenselCode, add another noise `delta*p4`
         // return the result
-        HenselCode::from((&g, &rational_term)) + dp4
+        // HenselCode::from((&g, &rational_term)) + dp4
+        HenselCode::from((&g, &rational_term))
     }
 
     fn decrypt(&self, hc: HenselCode<T>) -> Rational<T> {
         let hc_p4 = new_hensel_code(&self._p4, &hc.res);
+        println!("hensel code mod p4: {hc_p4}");
         let r_p4: Rational<T> = Rational::<T>::from(&hc_p4);
+        println!(
+            "hensel code decrypted: {}",
+            HenselCode::<T>::from((&self._p1, &r_p4))
+        );
         Rational::<T>::from(&HenselCode::<T>::from((&self._p1, &r_p4)))
     }
 }
@@ -168,19 +174,20 @@ impl<T: BigIntTrait> PublicKeySchemeCryptographicParameters<T> {
                 }
             }
         }
-        let [p1, p2, p3, p4prime] = &primes[..] else {
-            todo!()
-        };
+        let (p1, p2, p3, p4prime) = (
+            primes[0].clone(),
+            primes[1].clone(),
+            primes[2].clone(),
+            primes[3].clone(),
+        );
         let p4 = p4prime.pow((f64::from(mu) / f64::from(eta + 1)).ceil() as u128);
         let g = p1.mul(&p2.mul(&p3.mul(&p4)));
         let t = T::random_mod(&T::from_u128(2u128.pow(lambda - 1)));
         let delta_e = T::random_mod(&T::from_u128(2u128.pow(gamma - eta)));
-        let hc_noise = chinese_remainder(
-            new_hensel_code(p1, &T::from_u128(0)),
-            new_hensel_code(p2, &t),
-        );
-        let hc_p3_res = HenselCode::<T>::from((p3, &Rational::from(&hc_noise))).res;
-        let e = new_hensel_code(&g, &hc_p3_res.add(&delta_e.mul(p3)));
+        let hc_noise =
+            chinese_remainder(new_hensel_code(&p1, &T::zero()), new_hensel_code(&p2, &t));
+        let hc_p3_res = HenselCode::<T>::from((&p3, &Rational::from(&hc_noise))).res;
+        let e = new_hensel_code(&g, &hc_p3_res.add(&delta_e.mul(&p3)));
         Self::new(
             primes[0].clone(),
             primes[1].clone(),
@@ -239,7 +246,7 @@ mod tests {
             _p4: p4.clone(),
             _p5: p5.clone(),
         };
-        let (n1, n2, n3) = (T::from_u128(38), T::from_u128(2), T::from_u128(1));
+        let (n1, n2, n3) = (T::from_u128(38), T::from_u128(2), T::one());
         let result = crypto_param.chinese_remainder(n1.clone(), n2.clone(), n3.clone());
 
         assert_eq!((result.res.rem(&T::from_u128(4919))), n1.clone());

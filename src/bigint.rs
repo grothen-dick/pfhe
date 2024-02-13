@@ -6,6 +6,8 @@ use crypto_bigint::{
     Checked, NonZero, RandomMod, Uint, Wrapping, Zero,
 };
 
+use std::ops::Add;
+
 use crypto_primes::generate_prime as crypto_primes_generate;
 
 use std::{clone::Clone, convert::From, fmt};
@@ -13,11 +15,19 @@ use std::{clone::Clone, convert::From, fmt};
 /// A trait that define a big int interface. We need to do basic arithmetic operations with them,
 /// computing greater common divisor, square root, generate a random int mod `modulus`, cast a u128
 /// into a big int.
-pub trait BigIntTrait: PartialEq + PartialOrd + Clone + fmt::Display {
+pub trait BigIntTrait: PartialEq + PartialOrd + Clone + fmt::Display + fmt::Debug {
     fn add(&self, other: &Self) -> Self;
     fn sub(&self, other: &Self) -> Self;
     fn mul(&self, other: &Self) -> Self;
-    fn pow(&self, other: u128) -> Self;
+    fn pow(&self, other: u128) -> Self {
+        if other == 0 {
+            Self::one()
+        } else if other % 2 == 1 {
+            (self.mul(&self)).pow(other / 2).mul(&self)
+        } else {
+            (self.mul(&self)).pow(other / 2)
+        }
+    }
     fn div(&self, other: &Self) -> Self;
     fn rem(&self, other: &Self) -> Self;
     fn gcd(&self, other: &Self) -> Self;
@@ -26,6 +36,12 @@ pub trait BigIntTrait: PartialEq + PartialOrd + Clone + fmt::Display {
     fn from_u128(n: u128) -> Self;
     fn is_zero(&self) -> Choice;
     fn generate_prime(bit_length: Option<usize>) -> Self;
+    fn zero() -> Self {
+        Self::from_u128(0)
+    }
+    fn one() -> Self {
+        Self::from_u128(1)
+    }
 }
 
 #[derive(PartialEq, PartialOrd, Clone, Debug)]
@@ -37,7 +53,11 @@ pub struct CheckedCryptoBigInt<const L: usize = DEFAULT_LIMBS>(pub Checked<Uint<
 /// Displays a Wrapping big int
 impl<const L: usize> fmt::Display for WrappingCryptoBigInt<L> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "0x{}", self.0 .0.to_string().trim_start_matches('0'))
+        if self.0 .0.eq(&Uint::<L>::ZERO) {
+            write!(f, "0x0")
+        } else {
+            write!(f, "0x{}", self.0 .0.to_string().trim_start_matches('0'))
+        }
     }
 }
 
@@ -144,13 +164,6 @@ impl<const L: usize> BigIntTrait for CheckedCryptoBigInt<L> {
     fn mul(&self, other: &Self) -> Self {
         Self(self.0 * other.0)
     }
-    fn pow(&self, other: u128) -> Self {
-        let mut result: Self = Self::from_u128(1);
-        for _i in 0..(other) {
-            result = result.mul(&Self::from_u128(other));
-        }
-        result
-    }
     fn div(&self, other: &Self) -> Self {
         Self(Checked(
             self.0
@@ -191,7 +204,7 @@ impl<const L: usize> BigIntTrait for CheckedCryptoBigInt<L> {
         Self(Checked::new(Uint::<L>::from(n)))
     }
     fn is_zero(&self) -> Choice {
-        self.0.ct_eq(&Self::from_u128(0).0)
+        self.0.ct_eq(&Self::zero().0)
     }
     fn generate_prime(bit_length: Option<usize>) -> Self {
         CheckedCryptoBigInt(Checked::new(crypto_primes_generate::<L>(bit_length)))

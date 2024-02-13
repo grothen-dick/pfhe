@@ -4,6 +4,7 @@ use super::{
     rational::Rational,
 };
 use crate::bigint::BigIntTrait;
+use crypto_bigint::subtle::Choice;
 
 #[derive(Clone, Debug)]
 pub struct HenselCode<T: BigIntTrait> {
@@ -14,7 +15,7 @@ impl<T: BigIntTrait> HenselCode<T> {
     pub fn generate_zero(modulus: T) -> HenselCode<T> {
         HenselCode {
             modulus,
-            res: T::from_u128(0),
+            res: T::zero(),
         }
     }
 }
@@ -31,27 +32,27 @@ impl<T: BigIntTrait> HenselCode<T> {
     pub fn invert(&self) -> HenselCode<T> {
         let g = self.modulus.clone();
         let (mut x0, mut x1) = (self.modulus.clone(), self.res.clone());
-        let (mut z0, mut z1) = (T::from_u128(0), T::from_u128(1));
-        while x1.is_zero().unwrap_u8() == 0 {
+        let (mut y0, mut y1) = (T::zero(), T::one());
+        while !<Choice as Into<bool>>::into(x1.is_zero()) {
             let integer_div = x0.div(&x1);
             (x0, x1) = (x1.clone(), x0.sub(&integer_div.mul(&x1)));
-            (z0, z1) = (
-                z1.clone(),
-                (z0.add(&g).sub(&integer_div.mul(&z1).rem(&g))).rem(&g),
+            (y0, y1) = (
+                y1.clone(),
+                y0.add(&g).sub(&integer_div.mul(&y1).rem(&g)).rem(&g),
             );
         }
         // we have:
-        // x0 = gcd(modulus, res) = z0 * res % modulus
+        // x0 = gcd(modulus, res) = (y0 * res) % modulus
         // x1 = 0
-        if x0 != T::from_u128(1) {
+        if x0 != T::one() {
             HenselCode {
                 modulus: self.modulus.clone(),
-                res: T::from_u128(0),
+                res: T::zero(),
             }
         } else {
             HenselCode {
                 modulus: self.modulus.clone(),
-                res: z0,
+                res: y0,
             }
         }
     }
@@ -102,7 +103,7 @@ pub fn chinese_remainder<T: BigIntTrait>(hc1: HenselCode<T>, hc2: HenselCode<T>)
     let (g1, n1) = (hc1.modulus, hc1.res);
     let (g2, n2) = (hc2.modulus, hc2.res);
     // println!("\ng1: {g1}, g2: {g2}, gcd: {}", g1.gcd(&g2));
-    assert!(PartialEq::eq(&g1.gcd(&g2), &T::from_u128(1)));
+    assert!(PartialEq::eq(&g1.gcd(&g2), &T::one()));
     let g12 = g1.mul(&g2);
     let (g1_mod_g2, g2_mod_g1) = (
         HenselCode {
@@ -136,7 +137,7 @@ impl<T: BigIntTrait> From<(&T, &Rational<T>)> for HenselCode<T> {
         let denom = new_hensel_code(g, &r.denom);
         let num = new_hensel_code(g, &r.num);
 
-        if PartialEq::ne(&g.gcd(&r.denom), &T::from_u128(1)) {
+        if PartialEq::ne(&g.gcd(&r.denom), &T::one()) {
             Self::generate_zero(g.clone())
         } else {
             num * (denom.invert())
@@ -155,11 +156,11 @@ mod tests {
     fn invert_hensel_code() {
         let _from_u128 = <T as BigIntTrait>::from_u128;
         let (p1, _p2, _p3) = (T::from_u128(4919), T::from_u128(7), T::from_u128(11));
-        let (n1, _n2, _n3) = (T::from_u128(38), T::from_u128(2), T::from_u128(1));
+        let (n1, _n2, _n3) = (T::from_u128(38), T::from_u128(2), T::one());
 
         let hc1 = new_hensel_code(&p1, &n1);
 
-        assert_eq!(hc1.res.mul(&hc1.invert().res).rem(&p1), T::from_u128(1));
+        assert_eq!(hc1.res.mul(&hc1.invert().res).rem(&p1), T::one());
     }
 
     #[test]

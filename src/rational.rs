@@ -78,31 +78,37 @@ impl<T: BigIntTrait> Mul<Rational<T>> for Rational<T> {
 ///  iii) hc = num/denom (mod p)
 impl<T: BigIntTrait> From<&HenselCode<T>> for Rational<T> {
     fn from(hc: &HenselCode<T>) -> Self {
-        let n_max = hc
-            .modulus
-            .sub(&T::from_u128(1))
-            .div(&T::from_u128(2))
-            .sqrt();
+        let n_max = hc.modulus.sub(&T::one()).div(&T::from_u128(2)).sqrt();
 
+        let g = hc.modulus.clone();
         let (mut x0, mut x1) = (hc.modulus.clone(), hc.res.clone());
 
         if x1.is_zero().into() {
             return Rational::<T> {
-                num: T::from_u128(0),
-                denom: T::from_u128(1),
+                num: T::zero(),
+                denom: T::one(),
             };
         }
         // perform (modified) extended euclidean algorithm on (g, n % g)
-        let (mut y0, mut y1) = (T::from_u128(0), T::from_u128(1));
+        let (mut y0, mut y1) = (T::zero(), T::one());
+        println!("n_max: {n_max}, x0: {x0}, x1: {x1}, y0: {y0}, y1: {y1}");
         while (x0 > n_max) && !<Choice as Into<bool>>::into(x1.is_zero()) {
             let q = x0.div(&x1);
-            let (new_x0, new_x1) = (x1.clone(), x0.sub(&q.mul(&x1)));
-            let (new_y0, new_y1) = (y1.clone(), y0.sub(&q.mul(&y1)));
-            (x0, x1) = (new_x0, new_x1);
-            (y0, y1) = (new_y0, new_y1);
+            (x0, x1) = (x1.clone(), x0.sub(&q.mul(&x1)));
+            // all integers are non-negative. some extra checks have to be performed when using `sub`
+            // (y0, y1) = (
+            //     y1,
+            //     ((y0 + g) - (q*y1 % g)) % g,
+            // )
+            (y0, y1) = (y1.clone(), (y0.add(&g).sub(&q.mul(&y1).rem(&g))).rem(&g));
+            println!("n_max: {n_max}, x0: {x0}, x1: {x1}, y0: {y0}, y1: {y1}");
         }
 
-        Rational::<T> { num: x0, denom: y0 }
+        println!("result: {x0} / {y0}\n");
+        Rational::<T> {
+            num: x0,
+            denom: y0.rem(&hc.modulus),
+        }
     }
 }
 
