@@ -6,8 +6,6 @@ use crypto_bigint::{
     Checked, NonZero, RandomMod, Uint, Wrapping, Zero,
 };
 
-
-
 use crypto_primes::generate_prime as crypto_primes_generate;
 
 use std::{clone::Clone, convert::From, fmt};
