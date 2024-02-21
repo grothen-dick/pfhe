@@ -182,8 +182,8 @@ impl<T: BigIntTrait> PublicKeySchemeCryptographicParameters<T> {
         );
         let p4 = p4prime.pow((f64::from(mu) / f64::from(eta + 1)).ceil() as u128);
         let g = p1.mul(&p2.mul(&p3.mul(&p4)));
-        let t = T::random_mod(&T::from_u128(2u128.pow(lambda - 1)));
-        let delta_e = T::random_mod(&T::from_u128(2u128.pow(gamma - eta)));
+        let t = T::random_mod(&T::from_u128(2).pow((lambda - 1) as u128));
+        let delta_e = T::random_mod(&T::from_u128(2).pow((gamma - eta) as u128));
         let hc_noise =
             chinese_remainder(new_hensel_code(&p1, &T::zero()), new_hensel_code(&p2, &t));
         let hc_p3_res = HenselCode::<T>::from((&p3, &Rational::from(&hc_noise))).res;
