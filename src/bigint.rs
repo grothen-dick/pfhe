@@ -14,7 +14,7 @@ use crypto_bigint::{
 
 use crypto_primes::generate_prime as crypto_primes_generate;
 
-use std::{clone::Clone, convert::From, fmt};
+use std::{clone::Clone, fmt};
 
 /// A trait that define a big int interface. We need to do basic arithmetic operations with them,
 /// computing greater common divisor, square root, generate a random int mod `modulus`, cast a u128

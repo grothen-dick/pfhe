@@ -112,7 +112,7 @@ mod tests {
         let crypto_params: PrivateKeySchemeCryptographicParameters<T> =
             PrivateKeySchemeCryptographicParameters::<T>::new(p1, p2, p3, p4, p5);
         let message: Rational<T> = Rational {
-            num: T::from_u128(7),
+            num: T::from_u128(2),
             denom: T::from_u128(3),
         };
         println!("message: {}", message);

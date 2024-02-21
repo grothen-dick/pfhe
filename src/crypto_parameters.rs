@@ -6,7 +6,7 @@ use crate::{
     rational::Rational,
 };
 
-use std::convert::From;
+//use std::convert::From;
 
 /// This is a private key, with five private parameters.
 /// Rust doesn't like "const generics expressions" so it is needed to assume that
