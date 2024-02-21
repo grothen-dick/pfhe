@@ -151,10 +151,10 @@ impl BigIntTrait for BigInt {
 
     // Hacky implementation because of the return type defined in crypto_bigint
     fn is_zero(&self) -> Choice {
-        if *self == Self::from(0 as u128) {
-            Uint::<2>::from(0 as u128).is_zero()
+        if *self == Self::from(0_u128) {
+            Uint::<2>::from(0_u128).is_zero()
         } else {
-            Uint::<2>::from(1 as u128).is_zero()
+            Uint::<2>::from(1_u128).is_zero()
         }
     }
 
@@ -169,7 +169,7 @@ impl BigIntTrait for BigInt {
     }
 
     fn random_mod(modulus: &Self) -> Self {
-        if *modulus < BigInt::from(0 as u128) {
+        if *modulus < BigInt::from(0_u128) {
             panic!("Try to generate a random BigInt modulo a negative number")
         }
         let mut rng = thread_rng();

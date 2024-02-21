@@ -9,15 +9,11 @@ use std::{clone::Clone, fmt, ops};
 
 #[cfg(test)]
 mod tests {
-    use crate::crypto_parameters::{
-        EncryptionScheme, PrivateKeySchemeCryptographicParameters,
-        PublicKeySchemeCryptographicParameters,
-    };
+    use crate::crypto_parameters::{EncryptionScheme, PrivateKeySchemeCryptographicParameters};
 
-    use super::bigint::{BigIntTrait, WrappingCryptoBigInt};
+    use super::bigint::BigIntTrait;
     use super::hensel_code::{new_hensel_code, HenselCode};
     use super::rational::Rational;
-    use super::shared::DEFAULT_LIMBS;
 
     use num_bigint_dig::BigInt;
 
@@ -26,7 +22,7 @@ mod tests {
 
     #[test]
     fn translates_rational_to_hensel_code() {
-        fn simple_tester(r: &Rational<T>, p: &T) -> () {
+        fn simple_tester(r: &Rational<T>, p: &T) {
             let hc = HenselCode::from((p, r));
             let id_hc = &new_hensel_code(p, &(r.denom)).invert();
             let n_hc = new_hensel_code(p, &(r.num));
@@ -67,7 +63,7 @@ mod tests {
 
     #[test]
     fn translates_rational_to_hc_and_back() {
-        fn simple_tester(r: &Rational<T>, p: &T) -> () {
+        fn simple_tester(r: &Rational<T>, p: &T) {
             let hc = HenselCode::from((p, r));
             let new_r = Rational::<T>::from(&hc);
             let id_hc = new_hensel_code(p, &r.denom).invert();

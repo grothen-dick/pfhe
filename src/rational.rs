@@ -123,7 +123,7 @@ mod tests {
 
     #[test]
     fn adds_rationals() {
-        fn simple_tester(r1: &Rational<T>, r2: &Rational<T>) -> () {
+        fn simple_tester(r1: &Rational<T>, r2: &Rational<T>) {
             let sum = r1 + r2;
             assert_eq!(sum.denom, (r1.denom.mul(&r2.denom)));
             assert_eq!(sum.num, r1.denom.mul(&r2.num).add(&r2.denom.mul(&r1.num)));
