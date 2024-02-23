@@ -126,7 +126,12 @@ impl BigIntTrait for BigInt {
         self / other
     }
     fn rem(&self, other: &Self) -> Self {
-        self % other
+        let result = self % other;
+        if result < Self::from(0) {
+            result + other
+        } else {
+            result
+        }
     }
 
     /// Computes gcd of two &BigInt, the good-old Euclid way
@@ -174,7 +179,7 @@ impl BigIntTrait for BigInt {
         }
         let mut rng = thread_rng();
         let large_random_number: Self = rng.sample(RandomBits::new(modulus.bits() + 1));
-        large_random_number % modulus
+        large_random_number.rem(modulus)
     }
 }
 
