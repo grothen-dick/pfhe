@@ -9,7 +9,10 @@ use std::{clone::Clone, fmt, ops};
 
 #[cfg(test)]
 mod tests {
-    use crate::crypto_parameters::{EncryptionScheme, PrivateKeySchemeCryptographicParameters};
+    use crate::crypto_parameters::{
+        EncryptionScheme, PrivateKeySchemeCryptographicParameters,
+        PublicKeySchemeCryptographicParameters,
+    };
 
     use super::bigint::BigIntTrait;
     use super::hensel_code::{new_hensel_code, HenselCode};
@@ -122,20 +125,20 @@ mod tests {
         assert_eq!(message, decrypted);
     }
 
-    // #[test]
-    // fn public_encrypt_decrypt() {
-    //     let crypto_params: PublicKeySchemeCryptographicParameters<T> =
-    //         PublicKeySchemeCryptographicParameters::<T>::new_from_params(64, 10);
-    //     let message: Rational<T> = Rational {
-    //         num: T::from_u128(7),
-    //         denom: T::from_u128(3),
-    //     };
-    //     println!("message: {}", message);
-    //     let ciphertext = crypto_params.encrypt(message.clone());
-    //     println!("ciphertext: {}", ciphertext);
-    //     let decrypted = crypto_params.decrypt(ciphertext);
-    //     assert_eq!(message, decrypted);
-    // }
+    #[test]
+    fn public_encrypt_decrypt() {
+        let crypto_params: PublicKeySchemeCryptographicParameters<T> =
+            PublicKeySchemeCryptographicParameters::<T>::new_from_params(128, 10);
+        let message: Rational<T> = Rational {
+            num: T::from_u128(7),
+            denom: T::from_u128(3),
+        };
+        println!("message: {}", message);
+        let ciphertext = crypto_params.encrypt(message.clone());
+        println!("ciphertext: {}", ciphertext);
+        let decrypted = crypto_params.decrypt(ciphertext);
+        assert_eq!(message, decrypted);
+    }
 
     //  #[test]
     //     fn public_encrypt_add_decrypt() {
