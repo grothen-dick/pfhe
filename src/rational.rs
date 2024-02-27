@@ -83,7 +83,7 @@ impl<T: BigIntTrait> From<&HenselCode<T>> for Rational<T> {
         let g = hc.modulus.clone();
         let (mut x0, mut x1) = (hc.modulus.clone(), hc.res.clone());
 
-        if x1.is_zero().into() {
+        if x1.is_zero() {
             return Rational::<T> {
                 num: T::zero(),
                 denom: T::one(),
@@ -92,7 +92,7 @@ impl<T: BigIntTrait> From<&HenselCode<T>> for Rational<T> {
         // perform (modified) extended euclidean algorithm on (g, n % g)
         let (mut y0, mut y1) = (T::zero(), T::one());
         println!("n_max: {n_max}, x0: {x0}, x1: {x1}, y0: {y0}, y1: {y1}");
-        while (x0 > n_max) && !<Choice as Into<bool>>::into(x1.is_zero()) {
+        while (x0 > n_max) && !x1.is_zero() {
             let q = x0.div(&x1);
             (x0, x1) = (x1.clone(), x0.sub(&q.mul(&x1)));
             // all integers are non-negative. some extra checks have to be performed when using `sub`
