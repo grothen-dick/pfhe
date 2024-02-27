@@ -156,7 +156,7 @@ impl BigIntTrait for BigInt {
 
     // Hacky implementation because of the return type defined in crypto_bigint
     fn is_zero(&self) -> bool {
-	*self == Self::from(0)
+        *self == Self::from(0)
     }
 
     fn generate_prime(bit_length: Option<usize>) -> Self {
