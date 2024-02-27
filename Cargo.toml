@@ -10,10 +10,10 @@ readme = "README.md"
 
 [dependencies]
 crypto-bigint = { version = "0.5.3", features = ["rand"] }
-impl_ops = "0.1.1"
 crypto-primes = "0.5.0"
 num-bigint-dig = {version ="^0.7", features = ["prime", "rand"]}
 rand = "0.8.4"
+lazy_static = {version = "*"}
 
 [dev-dependencies]
 criterion = "0.3"

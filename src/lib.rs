@@ -1,3 +1,4 @@
+extern crate lazy_static;
 pub mod bigint;
 pub mod crypto_parameters;
 pub mod hensel_code;
@@ -16,11 +17,16 @@ mod tests {
         EncryptionScheme, PrivateKeySchemeCryptographicParameters,
         PublicKeySchemeCryptographicParameters,
     };
+    use lazy_static::lazy_static;
 
     use num_bigint_dig::BigInt;
 
     //const L: usize = DEFAULT_LIMBS;
     type T = BigInt;
+
+    lazy_static! {
+        pub static ref PUBLIC_PARAMS : PublicKeySchemeCryptographicParameters::<T> = PublicKeySchemeCryptographicParameters::<T>::new_from_params(128, 10); // secure parameters would be 512 and 10;
+    }
 
     #[test]
     fn translates_rational_to_hensel_code() {
@@ -126,23 +132,19 @@ mod tests {
 
     #[test]
     fn public_encrypt_decrypt() {
-        let crypto_params: PublicKeySchemeCryptographicParameters<T> =
-            PublicKeySchemeCryptographicParameters::<T>::new_from_params(128, 10); // secure parameters would be 512 and 10
         let message: Rational<T> = Rational {
             num: T::from_u128(7),
             denom: T::from_u128(3),
         };
         println!("message: {}", message);
-        let ciphertext = crypto_params.encrypt(message.clone());
+        let ciphertext = PUBLIC_PARAMS.encrypt(message.clone());
         println!("ciphertext: {}", ciphertext);
-        let decrypted = crypto_params.decrypt(ciphertext);
+        let decrypted = PUBLIC_PARAMS.decrypt(ciphertext);
         assert_eq!(message, decrypted);
     }
 
     #[test]
     fn public_encrypt_add_decrypt() {
-        let crypto_params: PublicKeySchemeCryptographicParameters<T> =
-            PublicKeySchemeCryptographicParameters::<T>::new_from_params(128, 10);
         let message1: Rational<T> = Rational {
             num: T::from_u128(7),
             denom: T::from_u128(3),
@@ -154,18 +156,16 @@ mod tests {
         };
         println!("message1: {}", message1);
         println!("message2: {}", message2);
-        let ciphertext1 = crypto_params.encrypt(message1.clone());
-        let ciphertext2 = crypto_params.encrypt(message2.clone());
+        let ciphertext1 = PUBLIC_PARAMS.encrypt(message1.clone());
+        let ciphertext2 = PUBLIC_PARAMS.encrypt(message2.clone());
         let ciphertext_1_plus_2 = ciphertext1 + ciphertext2;
         println!("ciphertext_1_plus_2: {}", ciphertext_1_plus_2);
-        let decrypted = crypto_params.decrypt(ciphertext_1_plus_2);
+        let decrypted = PUBLIC_PARAMS.decrypt(ciphertext_1_plus_2);
         assert_eq!(message1 + message2, decrypted);
     }
 
     #[test]
     fn public_encrypt_mul_decrypt() {
-        let crypto_params: PublicKeySchemeCryptographicParameters<T> =
-            PublicKeySchemeCryptographicParameters::<T>::new_from_params(128, 10);
         let message1: Rational<T> = Rational {
             num: T::from_u128(7),
             denom: T::from_u128(3),
@@ -177,18 +177,16 @@ mod tests {
         };
         println!("message1: {}", message1);
         println!("message2: {}", message2);
-        let ciphertext1 = crypto_params.encrypt(message1.clone());
-        let ciphertext2 = crypto_params.encrypt(message2.clone());
+        let ciphertext1 = PUBLIC_PARAMS.encrypt(message1.clone());
+        let ciphertext2 = PUBLIC_PARAMS.encrypt(message2.clone());
         let ciphertext_1_times_2 = ciphertext1 * ciphertext2;
         println!("ciphertext_1_times_2: {}", ciphertext_1_times_2);
-        let decrypted = crypto_params.decrypt(ciphertext_1_times_2);
+        let decrypted = PUBLIC_PARAMS.decrypt(ciphertext_1_times_2);
         assert_eq!(message1 * message2, decrypted);
     }
 
     #[test]
     fn public_encrypt_many_add_decrypt() {
-        let crypto_params: PublicKeySchemeCryptographicParameters<T> =
-            PublicKeySchemeCryptographicParameters::<T>::new_from_params(128, 10);
         let number_operation = 2;
         let message1: Rational<T> = Rational {
             num: T::from_u128(2),
@@ -201,8 +199,8 @@ mod tests {
         };
         println!("message1: {}", message1);
         println!("message2: {}", message2);
-        let ciphertext1 = crypto_params.encrypt(message1.clone());
-        let ciphertext2 = crypto_params.encrypt(message2.clone());
+        let ciphertext1 = PUBLIC_PARAMS.encrypt(message1.clone());
+        let ciphertext2 = PUBLIC_PARAMS.encrypt(message2.clone());
 
         let mut clear_result = &message1 + &message2;
         let mut encrypted_result = &ciphertext1 + &ciphertext2;
@@ -214,14 +212,12 @@ mod tests {
             encrypted_result = &encrypted_result + &ciphertext2;
         }
 
-        let decrypted = crypto_params.decrypt(encrypted_result);
+        let decrypted = PUBLIC_PARAMS.decrypt(encrypted_result);
         assert_eq!(clear_result, decrypted);
     }
 
     // #[test]
     // fn public_encrypt_many_mul_decrypt() {
-    //     let crypto_params: PublicKeySchemeCryptographicParameters<T> =
-    //         PublicKeySchemeCryptographicParameters::<T>::new_from_params(128, 10);
     // 	let number_operation = 1;
     //     let message1: Rational<T> = Rational {
     //         num: T::from_u128(1),
@@ -234,8 +230,8 @@ mod tests {
     //     };
     //     println!("message1: {}", message1);
     // 	println!("message2: {}", message2);
-    //     let ciphertext1 = crypto_params.encrypt(message1.clone());
-    // 	let ciphertext2 = crypto_params.encrypt(message2.clone());
+    //     let ciphertext1 = PUBLIC_PARAMS.encrypt(message1.clone());
+    // 	let ciphertext2 = PUBLIC_PARAMS.encrypt(message2.clone());
 
     // 	let mut clear_result = &message1 * &message2;
     // 	let mut encrypted_result = &ciphertext1 * &ciphertext2;
@@ -247,7 +243,7 @@ mod tests {
     // 	    encrypted_result = &encrypted_result * &ciphertext2;
     // 	}
 
-    //     let decrypted = crypto_params.decrypt(encrypted_result);
+    //     let decrypted = PUBLIC_PARAMS.decrypt(encrypted_result);
     //     assert_eq!(clear_result, decrypted);
     // }
 
