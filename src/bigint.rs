@@ -46,7 +46,7 @@ pub trait BigIntTrait: PartialEq + PartialOrd + Clone + fmt::Display + fmt::Debu
     fn sqrt(&self) -> Self;
     fn random_mod(modulus: &Self) -> Self;
     fn from_u128(n: u128) -> Self;
-    fn is_zero(&self) -> Choice;
+    fn is_zero(&self) -> bool;
     fn generate_prime(bit_length: Option<usize>) -> Self;
     fn zero() -> Self {
         Self::from_u128(0)
@@ -140,7 +140,7 @@ impl BigIntTrait for BigInt {
             return other.gcd(self);
         }
         let (mut x0, mut x1) = (self.clone(), other.clone());
-        while !<Choice as Into<bool>>::into(x1.is_zero()) {
+        while !x1.is_zero() {
             (x1, x0) = (x0.rem(&x1), x1);
         }
         x0
@@ -155,12 +155,8 @@ impl BigIntTrait for BigInt {
     }
 
     // Hacky implementation because of the return type defined in crypto_bigint
-    fn is_zero(&self) -> Choice {
-        if *self == Self::from(0_u128) {
-            Uint::<2>::from(0_u128).is_zero()
-        } else {
-            Uint::<2>::from(1_u128).is_zero()
-        }
+    fn is_zero(&self) -> bool {
+	*self == Self::from(0)
     }
 
     fn generate_prime(bit_length: Option<usize>) -> Self {
@@ -205,7 +201,7 @@ impl<const L: usize> BigIntTrait for WrappingCryptoBigInt<L> {
             return other.gcd(self);
         }
         let (mut x0, mut x1) = (self.clone(), other.clone());
-        while !<Choice as Into<bool>>::into(x1.is_zero()) {
+        while !x1.is_zero() {
             (x1, x0) = (x0.rem(&x1), x1);
         }
         x0
@@ -222,8 +218,8 @@ impl<const L: usize> BigIntTrait for WrappingCryptoBigInt<L> {
     fn from_u128(n: u128) -> Self {
         Self(Wrapping::<Uint<L>>(Uint::<L>::from(n)))
     }
-    fn is_zero(&self) -> Choice {
-        self.0.is_zero()
+    fn is_zero(&self) -> bool {
+        self.0.is_zero().into()
     }
     fn generate_prime(bit_length: Option<usize>) -> Self {
         WrappingCryptoBigInt(Wrapping(crypto_primes_generate::<L>(bit_length)))
@@ -279,8 +275,8 @@ impl<const L: usize> BigIntTrait for CheckedCryptoBigInt<L> {
     fn from_u128(n: u128) -> Self {
         Self(Checked::new(Uint::<L>::from(n)))
     }
-    fn is_zero(&self) -> Choice {
-        self.0.ct_eq(&Self::zero().0)
+    fn is_zero(&self) -> bool {
+        self.0.ct_eq(&Self::zero().0).into()
     }
     fn generate_prime(bit_length: Option<usize>) -> Self {
         CheckedCryptoBigInt(Checked::new(crypto_primes_generate::<L>(bit_length)))

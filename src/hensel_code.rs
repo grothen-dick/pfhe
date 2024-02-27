@@ -33,7 +33,7 @@ impl<T: BigIntTrait> HenselCode<T> {
         let g = self.modulus.clone();
         let (mut x0, mut x1) = (self.modulus.clone(), self.res.clone());
         let (mut y0, mut y1) = (T::zero(), T::one());
-        while !<Choice as Into<bool>>::into(x1.is_zero()) {
+        while !x1.is_zero() {
             let integer_div = x0.div(&x1);
             (x0, x1) = (x1.clone(), x0.sub(&integer_div.mul(&x1)));
             (y0, y1) = (
