@@ -1,12 +1,7 @@
-name: CI
+name: Bench
 
 on:
-  pull_request:
-    branches:
-      - main
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   base:
@@ -26,18 +21,8 @@ jobs:
         run: |
           cargo --version --verbose
           rustc --version
-          cargo clippy --version          
+          cargo clippy --version
 
-      - name: Lint
+      - name: Bench
         run: |
-          cargo fmt -- --check
-          cargo clippy -- -D warnings
-
-      - name: Test
-        run: |
-          cargo check
-          cargo test --all
-
-      - name: Build
-        run: |
-          cargo build --release 
+          cargo bench
