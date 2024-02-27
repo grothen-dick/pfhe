@@ -9,14 +9,13 @@ use std::{clone::Clone, fmt, ops};
 
 #[cfg(test)]
 mod tests {
+    use super::bigint::BigIntTrait;
+    use super::hensel_code::{new_hensel_code, HenselCode};
+    use super::rational::Rational;
     use crate::crypto_parameters::{
         EncryptionScheme, PrivateKeySchemeCryptographicParameters,
         PublicKeySchemeCryptographicParameters,
     };
-
-    use super::bigint::BigIntTrait;
-    use super::hensel_code::{new_hensel_code, HenselCode};
-    use super::rational::Rational;
 
     use num_bigint_dig::BigInt;
 
@@ -128,7 +127,7 @@ mod tests {
     #[test]
     fn public_encrypt_decrypt() {
         let crypto_params: PublicKeySchemeCryptographicParameters<T> =
-            PublicKeySchemeCryptographicParameters::<T>::new_from_params(128, 10);
+            PublicKeySchemeCryptographicParameters::<T>::new_from_params(128, 10); // secure parameters would be 512 and 10
         let message: Rational<T> = Rational {
             num: T::from_u128(7),
             denom: T::from_u128(3),
@@ -139,6 +138,118 @@ mod tests {
         let decrypted = crypto_params.decrypt(ciphertext);
         assert_eq!(message, decrypted);
     }
+
+    #[test]
+    fn public_encrypt_add_decrypt() {
+        let crypto_params: PublicKeySchemeCryptographicParameters<T> =
+            PublicKeySchemeCryptographicParameters::<T>::new_from_params(128, 10);
+        let message1: Rational<T> = Rational {
+            num: T::from_u128(7),
+            denom: T::from_u128(3),
+        };
+
+        let message2: Rational<T> = Rational {
+            num: T::from_u128(16),
+            denom: T::from_u128(5),
+        };
+        println!("message1: {}", message1);
+        println!("message2: {}", message2);
+        let ciphertext1 = crypto_params.encrypt(message1.clone());
+        let ciphertext2 = crypto_params.encrypt(message2.clone());
+        let ciphertext_1_plus_2 = ciphertext1 + ciphertext2;
+        println!("ciphertext_1_plus_2: {}", ciphertext_1_plus_2);
+        let decrypted = crypto_params.decrypt(ciphertext_1_plus_2);
+        assert_eq!(message1 + message2, decrypted);
+    }
+
+    #[test]
+    fn public_encrypt_mul_decrypt() {
+        let crypto_params: PublicKeySchemeCryptographicParameters<T> =
+            PublicKeySchemeCryptographicParameters::<T>::new_from_params(128, 10);
+        let message1: Rational<T> = Rational {
+            num: T::from_u128(7),
+            denom: T::from_u128(3),
+        };
+
+        let message2: Rational<T> = Rational {
+            num: T::from_u128(16),
+            denom: T::from_u128(5),
+        };
+        println!("message1: {}", message1);
+        println!("message2: {}", message2);
+        let ciphertext1 = crypto_params.encrypt(message1.clone());
+        let ciphertext2 = crypto_params.encrypt(message2.clone());
+        let ciphertext_1_times_2 = ciphertext1 * ciphertext2;
+        println!("ciphertext_1_times_2: {}", ciphertext_1_times_2);
+        let decrypted = crypto_params.decrypt(ciphertext_1_times_2);
+        assert_eq!(message1 * message2, decrypted);
+    }
+
+    #[test]
+    fn public_encrypt_many_add_decrypt() {
+        let crypto_params: PublicKeySchemeCryptographicParameters<T> =
+            PublicKeySchemeCryptographicParameters::<T>::new_from_params(128, 10);
+        let number_operation = 2;
+        let message1: Rational<T> = Rational {
+            num: T::from_u128(2),
+            denom: T::from_u128(3),
+        };
+
+        let message2: Rational<T> = Rational {
+            num: T::from_u128(7),
+            denom: T::from_u128(4),
+        };
+        println!("message1: {}", message1);
+        println!("message2: {}", message2);
+        let ciphertext1 = crypto_params.encrypt(message1.clone());
+        let ciphertext2 = crypto_params.encrypt(message2.clone());
+
+        let mut clear_result = &message1 + &message2;
+        let mut encrypted_result = &ciphertext1 + &ciphertext2;
+
+        for _ in 0..number_operation {
+            clear_result = &clear_result + &message1;
+            clear_result = &clear_result + &message2;
+            encrypted_result = &encrypted_result + &ciphertext1;
+            encrypted_result = &encrypted_result + &ciphertext2;
+        }
+
+        let decrypted = crypto_params.decrypt(encrypted_result);
+        assert_eq!(clear_result, decrypted);
+    }
+
+    // #[test]
+    // fn public_encrypt_many_mul_decrypt() {
+    //     let crypto_params: PublicKeySchemeCryptographicParameters<T> =
+    //         PublicKeySchemeCryptographicParameters::<T>::new_from_params(128, 10);
+    // 	let number_operation = 1;
+    //     let message1: Rational<T> = Rational {
+    //         num: T::from_u128(1),
+    //         denom: T::from_u128(1),
+    //     };
+
+    // 	let message2: Rational<T> = Rational {
+    //         num: T::from_u128(1),
+    //         denom: T::from_u128(1),
+    //     };
+    //     println!("message1: {}", message1);
+    // 	println!("message2: {}", message2);
+    //     let ciphertext1 = crypto_params.encrypt(message1.clone());
+    // 	let ciphertext2 = crypto_params.encrypt(message2.clone());
+
+    // 	let mut clear_result = &message1 * &message2;
+    // 	let mut encrypted_result = &ciphertext1 * &ciphertext2;
+
+    // 	for _ in 0..number_operation {
+    // 	    clear_result = &clear_result *  &message1;
+    // 	    clear_result = &clear_result * &message2;
+    // 	    encrypted_result = &encrypted_result * &ciphertext1;
+    // 	    encrypted_result = &encrypted_result * &ciphertext2;
+    // 	}
+
+    //     let decrypted = crypto_params.decrypt(encrypted_result);
+    //     assert_eq!(clear_result, decrypted);
+    // }
 
     //  #[test]
     //     fn public_encrypt_add_decrypt() {
