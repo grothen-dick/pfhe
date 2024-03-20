@@ -4,7 +4,7 @@ use super::{
     rational::Rational,
 };
 use crate::bigint::BigIntTrait;
-use crypto_bigint::subtle::Choice;
+//use crypto_bigint::subtle::Choice;
 
 #[derive(Clone, Debug)]
 pub struct HenselCode<T: BigIntTrait> {
