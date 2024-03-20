@@ -25,7 +25,7 @@ mod tests {
     type T = BigInt;
 
     lazy_static! {
-        pub static ref PUBLIC_PARAMS : PublicKeySchemeCryptographicParameters::<T> = PublicKeySchemeCryptographicParameters::<T>::new_from_params(128, 10); // secure parameters would be 512 and 10;
+        pub static ref PUBLIC_PARAMS : PublicKeySchemeCryptographicParameters::<T> = PublicKeySchemeCryptographicParameters::<T>::new_from_number_operations(128, 1); // secure parameter would be lambda = 512
     }
 
     #[test]

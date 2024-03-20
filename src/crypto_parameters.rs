@@ -158,6 +158,16 @@ impl<T: BigIntTrait> PublicKeySchemeCryptographicParameters<T> {
         }
     }
 
+    /// generates keys (in particular 5 distinct primes) from the security parameter `lambda` and the number `number_operations` of homomorphic operations allowed on ciphertexts
+    pub fn new_from_number_operations(lambda: u32, number_operations: u32) -> Self {
+        Self::new_from_params(lambda, Self::d_from_number_operations(number_operations))
+    }
+
+    /// return the minimum value of the parameter `d` allowing `number_operations` homomorphic operations on ciphertexts
+    pub fn d_from_number_operations(number_operations: u32) -> u32 {
+        (number_operations + 2) * 5
+    }
+
     /// generates 5 distincts primes from security parameters `lambda, d`
     pub fn new_from_params(lambda: u32, d: u32) -> Self {
         let rho = lambda;
